@@ -4,10 +4,13 @@
 #include <string>
 #include <thread>
 
-// function calling:
-void handlePlayerInput();
+// Forward declaration
+class Player;
 
-// classes and structs
+// Function Calling:
+void handlePlayerInput(Player &player, bool &running);
+
+// Classes and Structs
 class Player {
 public:
   // TODO: add damage and healing on keykinds + and -.
@@ -78,16 +81,19 @@ int main() {
   bool windowClosed = {false};
   Player mainPlayer; // creates the player character
 
-  std::cout << mainPlayer.getTotalHealth();
-  mainPlayer.healLimb();
-
   while (!windowClosed) {
+    handlePlayerInput(mainPlayer, windowClosed);
   }
   return 0;
 }
 
-// functions
-void handlePlayerInput() {
-  std::string playerInput = {};
-  std::getline(std::cin >> std::ws, playerInput);
+// Functions
+void handlePlayerInput(Player &player, bool &running) {
+  std::cout << "HEAL, EXIT." << '\n';
+  std::string input = {};
+  std::getline(std::cin >> std::ws, input);
+  std::transform(input.begin(), input.end(), input.begin(), ::toupper);
+  if (input == "HEAL") {
+    player.healLimb();
+  }
 };
