@@ -1,11 +1,16 @@
+#include <algorithm>
 #include <chrono>
 #include <iostream>
 #include <string>
 #include <thread>
 
+// function calling:
+void handlePlayerInput();
+
+// classes and structs
 class Player {
 public:
-  // TODO: Finish the health system with multiple limbs.
+  // TODO: add damage and healing on keykinds + and -.
   int m_mainHealth;
   int m_head;
   int m_leftArm;
@@ -13,8 +18,8 @@ public:
   int m_torso;
   int m_leftLeg;
   int m_rightLeg;
+  // TODO: Create armour system; later ballistic system.
   int m_armour;
-
   Player()
       : m_head(40), m_torso(60), m_leftArm(75), m_leftLeg(75), m_rightArm(75),
         m_rightLeg(75) {}
@@ -22,15 +27,67 @@ public:
   int getTotalHealth() {
     return (m_head + m_torso + m_leftArm + m_leftLeg + m_rightArm + m_rightLeg);
   }
+
+  void healLimb() {
+    std::string limbChoice = {};
+    std::cout << "Which Limb?";
+    std::getline(
+        std::cin >> std::ws,
+        limbChoice); // std::getline gets the whole line including spaces.
+    transform(limbChoice.begin(), limbChoice.end(), limbChoice.begin(),
+              ::toupper); // changes string to all capital.
+    // TODO: Change second if statements to std::clamp
+    if (limbChoice == "HEAD") {
+      m_head += 15;
+      if (m_head > 40) {
+        m_head = {40};
+      }
+    } else if (limbChoice == "TORSO") {
+      m_torso += 15;
+      if (m_torso > 60) {
+        m_torso = {60};
+      }
+    } else if (limbChoice == "LEFT ARM") {
+      m_leftArm += 15;
+      if (m_leftArm > 75) {
+        m_leftArm = {75};
+      }
+    } else if (limbChoice == "RIGHT ARM") {
+      m_rightArm += 15;
+      if (m_rightArm > 75) {
+        m_rightArm = {75};
+      }
+    } else if (limbChoice == "LEFT LEG") {
+      m_leftLeg += 15;
+      if (m_leftLeg > 75) {
+        m_leftLeg = {75};
+      }
+    } else if (limbChoice == "RIGHT LEG") {
+      m_rightLeg += 15;
+      if (m_rightLeg > 75) {
+        m_rightLeg = {75};
+      }
+    } else {
+      std::cout << "Invalid Limb.";
+    }
+  }
 };
 
+// MAIN
 int main() {
+  bool windowClosed = {false};
   Player mainPlayer; // creates the player character
 
   std::cout << mainPlayer.getTotalHealth();
+  mainPlayer.healLimb();
 
-  // TEMP: KEEP WINDOW OPEN
-  int hold;
-  std::cin >> hold;
+  while (!windowClosed) {
+  }
   return 0;
 }
+
+// functions
+void handlePlayerInput() {
+  std::string playerInput = {};
+  std::getline(std::cin >> std::ws, playerInput);
+};
