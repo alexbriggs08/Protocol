@@ -49,6 +49,8 @@ public:
         m_temperature(37) {}
 
   int getTotalHealth() {
+    m_mainHealth =
+        m_head + m_torso + m_leftArm + m_rightArm + m_leftLeg + m_rightLeg;
     return (m_head + m_torso + m_leftArm + m_leftLeg + m_rightArm + m_rightLeg);
   }
 
@@ -84,37 +86,158 @@ public:
     }
   };
 
-  void damagePlayer(std::string limb, int damageLevel) {
-    // low damage level
+  void damagePlayer(BodyPart limb, int damageLevel) {
     if (damageLevel == 1) {
+      switch (limb) {
+      case BodyPart::Head:
+        m_head = std::clamp(m_head - (rand() % 20 + 5), 0, 40);
+        break;
+      case BodyPart::Torso:
+        m_torso = std::clamp(m_torso - (rand() % 20 + 5), 0, 60);
+        break;
+      case BodyPart::LeftArm:
+        m_leftArm = std::clamp(m_leftArm - (rand() % 20 + 5), 0, 75);
+        break;
+      case BodyPart::RightArm:
+        m_rightArm = std::clamp(m_rightArm - (rand() % 20 + 5), 0, 75);
+        break;
+      case BodyPart::LeftLeg:
+        m_leftLeg = std::clamp(m_leftLeg - (rand() % 20 + 5), 0, 75);
+        break;
+      case BodyPart::RightLeg:
+        m_rightLeg = std::clamp(m_rightLeg - (rand() % 20 + 5), 0, 75);
+        break;
+      case BodyPart::None:
+        std::cout << "Something went wrong!" << '\n';
+        break;
+      }
+    } else if (damageLevel == 2) {
+      switch (limb) {
+      case BodyPart::Head:
+        m_head = std::clamp(m_head - (rand() % 30 + 15), 0, 40);
+        break;
+      case BodyPart::Torso:
+        m_torso = std::clamp(m_torso - (rand() % 30 + 15), 0, 60);
+        break;
+      case BodyPart::LeftArm:
+        m_leftArm = std::clamp(m_leftArm - (rand() % 30 + 15), 0, 75);
+        break;
+      case BodyPart::RightArm:
+        m_rightArm = std::clamp(m_rightArm - (rand() % 30 + 15), 0, 75);
+        break;
+      case BodyPart::LeftLeg:
+        m_leftLeg = std::clamp(m_leftLeg - (rand() % 30 + 15), 0, 75);
+        break;
+      case BodyPart::RightLeg:
+        m_rightLeg = std::clamp(m_rightLeg - (rand() % 30 + 15), 0, 75);
+        break;
+      case BodyPart::None:
+        std::cout << "Something went wrong!" << '\n';
+        break;
+      }
+    } else if (damageLevel == 3) {
+      switch (limb) {
+      case BodyPart::Head:
+        m_head = std::clamp(m_head - (rand() % 40 + 25), 0, 40);
+        break;
+      case BodyPart::Torso:
+        m_torso = std::clamp(m_torso - (rand() % 40 + 30), 0, 60);
+        break;
+      case BodyPart::LeftArm:
+        m_leftArm = std::clamp(m_leftArm - (rand() % 50 + 25), 0, 75);
+        break;
+      case BodyPart::RightArm:
+        m_rightArm = std::clamp(m_rightArm - (rand() % 50 + 25), 0, 75);
+        break;
+      case BodyPart::LeftLeg:
+        m_leftLeg = std::clamp(m_leftLeg - (rand() % 50 + 25), 0, 75);
+        break;
+      case BodyPart::RightLeg:
+        m_rightLeg = std::clamp(m_rightLeg - (rand() % 50 + 25), 0, 75);
+        break;
+      case BodyPart::None:
+        std::cout << "Something went wrong!" << '\n';
+        break;
+      }
     }
   };
-
 };
 // Function Calling:
 void handlePlayerInput(Player &player, bool &running);
+void playIntro();
 
-  // MAIN
-  int main() {
-    bool windowClosed = {false};
-    Player mainPlayer; // creates the player character
+// MAIN
+int main() {
+  bool windowClosed = {false};
+  Player mainPlayer; // creates the player character
 
-    while (!windowClosed) {
-      handlePlayerInput(mainPlayer, windowClosed);
-    }
-    return 0;
+  playIntro();
+
+  mainPlayer.getTotalHealth();
+
+  while (!windowClosed) {
+    handlePlayerInput(mainPlayer, windowClosed);
   }
+  return 0;
+}
 
-  // Functions
-  void handlePlayerInput(Player &player, bool &isNotRunning) {
-    std::cout << "HEAL, EXIT." << '\n';
-    std::string input = {};
-    std::getline(std::cin >> std::ws, input);
-    std::transform(input.begin(), input.end(), input.begin(), ::toupper);
-    if (input == "HEAL") {
-      player.healLimb();
-    } else if (input == "EXIT") {
-      std::cout << "Exiting....";
-      isNotRunning = {true};
+// Functions
+void handlePlayerInput(Player &player, bool &isNotRunning) {
+  std::cout << "HEAL, DAMAGE, CURRENT, EXIT." << '\n';
+  std::string input = {};
+  std::getline(std::cin >> std::ws, input);
+  std::transform(input.begin(), input.end(), input.begin(), ::toupper);
+  if (input == "HEAL") {
+    player.healLimb();
+  } else if (input == "DAMAGE") {
+    std::string limbChoice;
+    int damageLevel;
+
+    std::cout << "Choose a limb: \n";
+    std::getline(std::cin >> std::ws, limbChoice);
+
+    std::cout << "Choose damage level: \n";
+    std::cin >> damageLevel;
+    if (damageLevel >= 4 || damageLevel <= 0) {
+      std::cout << "Invalid Damage Level \n";
     }
+
+    BodyPart part = player.stringToBodyPart(limbChoice);
+    player.damagePlayer(part, damageLevel);
+
+  } else if (input == "CURRENT") {
+    std::cout << "Overall:" << player.getTotalHealth() << '\n';
+    std::cout << "--------------LIMBS---------------- \n";
+    std::cout << "Head: " << player.m_head << '\n';
+    std::cout << "Torso: " << player.m_torso << '\n';
+    std::cout << "Left Arm: " << player.m_leftArm << '\n';
+    std::cout << "Right Arm: " << player.m_rightArm << '\n';
+    std::cout << "Left Leg: " << player.m_leftLeg << '\n';
+    std::cout << "Right Leg: " << player.m_rightLeg << '\n';
+    std::cout << "---------------END---------------- \n";
+  } else if (input == "EXIT") {
+    std::cout << "Exiting....";
+    isNotRunning = {true};
   }
+}
+
+void playIntro() {
+  std::string line1 = "PROTOCOL OS [Version 0.1.0]...\n";
+  std::string line2 = "Initializing biometric link...\n";
+  std::string line3 = "Limb status: NOMINAL.\n";
+  std::string line4 = "Ready for input.\n\n";
+
+  auto typeText = [](const std::string &text) {
+    for (char c : text) {
+      std::cout << c << std::flush;
+      std::this_thread::sleep_for(std::chrono::milliseconds(40));
+    }
+  };
+
+  typeText(line1);
+  std::this_thread::sleep_for(std::chrono::milliseconds(500));
+  typeText(line2);
+  typeText(line3);
+  std::this_thread::sleep_for(std::chrono::milliseconds(500));
+  typeText(line4);
+}
