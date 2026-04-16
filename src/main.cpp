@@ -161,6 +161,14 @@ public:
       }
     }
   };
+  // TODO: Check to make sure this works. 
+  bool isDead() {
+    if (m_head = < 0) {
+      std::cout << "You have died." return true;
+    } else if (m_mainHealth = < 0) {
+      std::cout << "You have died." return true;
+    }
+  }
 };
 // Function Calling:
 void handlePlayerInput(Player &player, bool &running);
