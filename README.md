@@ -9,3 +9,6 @@ Go to the Projects tab to see progress. Leave a comment if you have any ideas or
 ## [Releases](https://github.com/alexbriggs08/Protocol/releases)
 
 <img width="480" height="270" alt="giphy-5" src="https://github.com/user-attachments/assets/79b93027-78e1-4934-921f-844a2f880624" />
+
+## ROADMAP:
+<img width="680" height="920" alt="cpp_game_roadmap_v3" src="https://github.com/user-attachments/assets/3640280d-1d55-45fc-9dfb-99453e2c98dd" />
