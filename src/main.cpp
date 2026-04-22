@@ -1,4 +1,3 @@
-// TODO: Remove unused include — raylib is not used anywhere in the code
 #include "raylib.h"
 #include <algorithm>
 #include <chrono>
@@ -311,9 +310,7 @@ auto stutterText = [](const std::string &text) {
 
 // MAIN
 int main() {
-  // TODO: Seed rand() here — e.g. srand(static_cast<unsigned>(time(nullptr)))
-  // — otherwise damage rolls are identical every run. Consider switching to
-  // <random> for proper randomness.
+  srand(static_cast<unsigned>(time(nullptr)));
   bool windowClosed = {false};
   Player mainPlayer;
   playIntro();
