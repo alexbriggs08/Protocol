@@ -171,6 +171,14 @@ public:
         break;
       }
     }
+  }
+    void radiationDamage(int radiation){
+      if (radiation >= 40) {
+        
+        
+      }
+    }
+
   };
 
   // Functions
