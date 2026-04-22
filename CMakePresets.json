@@ -2,9 +2,14 @@
     "version": 8,
     "configurePresets": [
         {
-            "name": "Clang-Debug",
+            "name": "Mac-Debug",
             "displayName": "Mac Debug (Clang)",
             "description": "Standard Mac development build with debug info",
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Darwin"
+            },
             "binaryDir": "${sourceDir}/out/build/${presetName}",
             "cacheVariables": {
                 "CMAKE_C_COMPILER": "/usr/bin/clang",
@@ -14,8 +19,13 @@
         },
         {
             "name": "Windows-Release",
-            "displayName": "Windows EXE (MinGW)",
-            "description": "Cross-compile for Windows with static linking",
+            "displayName": "Windows EXE (cross-compile from Mac)",
+            "description": "Cross-compile a Windows executable from macOS using Homebrew MinGW",
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Darwin"
+            },
             "generator": "Unix Makefiles",
             "binaryDir": "${sourceDir}/out/build/${presetName}",
             "cacheVariables": {
@@ -23,6 +33,21 @@
                 "CMAKE_C_COMPILER": "/opt/homebrew/bin/x86_64-w64-mingw32-gcc",
                 "CMAKE_CXX_COMPILER": "/opt/homebrew/bin/x86_64-w64-mingw32-g++",
                 "CMAKE_BUILD_TYPE": "Release"
+            }
+        },
+        {
+            "name": "Windows-Debug",
+            "displayName": "Windows Debug (MinGW native)",
+            "description": "Native Windows build using MinGW GCC",
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Windows"
+            },
+            "generator": "MinGW Makefiles",
+            "binaryDir": "${sourceDir}/out/build/${presetName}",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug"
             }
         }
     ]

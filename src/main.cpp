@@ -1,3 +1,5 @@
+// TODO: Remove unused include — raylib is not used anywhere in the code
+#include "raylib.h"
 #include <algorithm>
 #include <chrono>
 #include <cstdlib>
@@ -23,6 +25,8 @@ public:
   // TODO: Create armour system; later ballistic system.
   int m_armour;
   // Survival Mechanics
+  // TODO: m_armour, m_hunger, m_thirst, and m_temperature are never initialized
+  // in the constructor (garbage values) and are unused — initialize or remove them.
   int m_radiation;
   int m_hunger;
   int m_thirst;
@@ -45,6 +49,8 @@ public:
     return BodyPart::None;
   }
 
+  // TODO: Initialize m_overallHealth here (e.g. to the sum of all limbs) so
+  // isDead() never reads a garbage value before getTotalHealth() is called.
   Player()
       : m_head(40), m_torso(60), m_leftArm(75), m_leftLeg(75), m_rightArm(75),
         m_rightLeg(75), m_radiation(0), m_hunger(0), m_thirst(0),
@@ -172,111 +178,11 @@ public:
       }
     }
   }
-    void radiationDamage(int radiation){
-      if (radiation >= 40) {
-        
-        
-      }
+  void radiationDamage(int radiation) {
+    // TODO: Implement radiation damage logic — this function is currently a
+    // no-op. Apply limb/health degradation when radiation >= 40.
+    if (radiation >= 40) {
     }
-
-  };
-
-  // Functions
-  static void handlePlayerInput(Player &player, bool &isNotRunning) {
-    std::cout << "HEAL, DAMAGE, CURRENT, EXIT." << '\n';
-    std::string input = {};
-    std::getline(std::cin >> std::ws, input);
-    std::transform(input.begin(), input.end(), input.begin(), ::toupper);
-    if (input == "HEAL") {
-      player.healLimb();
-    } else if (input == "DAMAGE") {
-      std::string limbChoice;
-      int damageLevel;
-
-      std::cout << "Choose a limb: \n";
-      std::getline(std::cin >> std::ws, limbChoice);
-
-      std::cout << "Choose damage level: \n";
-      std::cin >> damageLevel;
-      if (damageLevel >= 4 || damageLevel <= 0) {
-        std::cout << "Invalid Damage Level \n";
-      }
-
-      BodyPart part = player.stringToBodyPart(limbChoice);
-      player.damagePlayer(part, damageLevel);
-
-    } else if (input == "CURRENT") {
-      std::cout << "Overall:" << player.getTotalHealth() << '\n';
-      std::cout << "--------------LIMBS---------------- \n";
-      std::cout << "Head: " << player.m_head << '\n';
-      std::cout << "Torso: " << player.m_torso << '\n';
-      std::cout << "Left Arm: " << player.m_leftArm << '\n';
-      std::cout << "Right Arm: " << player.m_rightArm << '\n';
-      std::cout << "Left Leg: " << player.m_leftLeg << '\n';
-      std::cout << "Right Leg: " << player.m_rightLeg << '\n';
-      std::cout << "---------------END---------------- \n";
-    } else if (input == "KILL") {
-      player.m_head = 0;
-
-    } else if (input == "EXIT") {
-      std::cout << "Exiting....";
-      std::this_thread::sleep_for(std::chrono::milliseconds(500));
-      isNotRunning = {true};
-    }
-  }
-
-  static void playIntro() {
-    std::string line1 = "PROTOCOL OS [Version 0.1.0]...\n";
-    std::string line2 = "Initializing biometric link...\n";
-    std::string line3 = "Limb status: NOMINAL.\n";
-    std::string line4 = "Ready for input.\n\n";
-
-    auto typeText = [](const std::string &text) {
-      for (char c : text) {
-        std::cout << c << std::flush;
-        std::this_thread::sleep_for(std::chrono::milliseconds(40));
-      }
-    };
-
-    typeText(line1);
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
-    typeText(line2);
-    typeText(line3);
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
-    typeText(line4);
-  }
-
-  static void playDeathSequence() {
-    for (int n = 0; n < 10; ++n)
-      std::cout << "\n";
-
-    std::cout << std::string(32, ' ') << "[ CONNECTION LOST ]" << std::endl;
-    std::cout << std::string(34, ' ') << "SIGNAL NULL" << std::endl;
-
-    for (int n = 0; n < 10; ++n)
-      std::cout << "\n";
-  }
-
-  void typeText(const std::string &text, int speedMs = 40) {
-    for (char c : text) {
-      std::cout << c << std::flush;
-      std::this_thread::sleep_for(std::chrono::milliseconds(speedMs));
-    }
-  }
-
-  void playHealingAnimation(std::string statusMessage) {
-    std::cout << "\n[!] INITIATING BIO-RECONSTRUCTION...\n";
-
-    // Progress Bar
-    std::cout << "PROGRESS: [";
-    for (int i = 0; i < 20; ++i) {
-      std::cout << "■" << std::flush;
-      std::this_thread::sleep_for(std::chrono::milliseconds(30));
-    }
-    std::cout << "] 100%\n";
-
-    // Display the status
-    typeText("SYSTEM OS: " + statusMessage + "\n\n");
   }
 
   bool isDead() {
@@ -291,6 +197,109 @@ public:
     }
   }
 };
+
+// Functions
+static void handlePlayerInput(Player &player, bool &isNotRunning) {
+  std::cout << "HEAL, DAMAGE, CURRENT, EXIT." << '\n';
+  std::string input = {};
+  std::getline(std::cin >> std::ws, input);
+  std::transform(input.begin(), input.end(), input.begin(), ::toupper);
+  if (input == "HEAL") {
+    player.healLimb();
+  } else if (input == "DAMAGE") {
+    std::string limbChoice;
+    int damageLevel;
+
+    std::cout << "Choose a limb: \n";
+    std::getline(std::cin >> std::ws, limbChoice);
+
+    std::cout << "Choose damage level: \n";
+    std::cin >> damageLevel;
+    if (damageLevel >= 4 || damageLevel <= 0) {
+      std::cout << "Invalid Damage Level \n";
+      // TODO: Return early here — damagePlayer() is still called below with
+      // the invalid level, silently doing nothing.
+    }
+
+    BodyPart part = player.stringToBodyPart(limbChoice);
+    player.damagePlayer(part, damageLevel);
+
+  } else if (input == "CURRENT") {
+    std::cout << "Overall:" << player.getTotalHealth() << '\n';
+    std::cout << "--------------LIMBS---------------- \n";
+    std::cout << "Head: " << player.m_head << '\n';
+    std::cout << "Torso: " << player.m_torso << '\n';
+    std::cout << "Left Arm: " << player.m_leftArm << '\n';
+    std::cout << "Right Arm: " << player.m_rightArm << '\n';
+    std::cout << "Left Leg: " << player.m_leftLeg << '\n';
+    std::cout << "Right Leg: " << player.m_rightLeg << '\n';
+    std::cout << "---------------END---------------- \n";
+  } else if (input == "KILL") {
+    player.m_head = 0;
+
+  } else if (input == "EXIT") {
+    std::cout << "Exiting....";
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    isNotRunning = {true};
+  }
+}
+
+static void playIntro() {
+  std::string line1 = "PROTOCOL OS [Version 0.1.0]...\n";
+  std::string line2 = "Initializing biometric link...\n";
+  std::string line3 = "Limb status: NOMINAL.\n";
+  std::string line4 = "Ready for input.\n\n";
+
+  // TODO: Remove this local lambda — it duplicates the global typeText()
+  // free function below. Call the global one directly instead.
+  auto typeText = [](const std::string &text) {
+    for (char c : text) {
+      std::cout << c << std::flush;
+      std::this_thread::sleep_for(std::chrono::milliseconds(40));
+    }
+  };
+
+  typeText(line1);
+  std::this_thread::sleep_for(std::chrono::milliseconds(500));
+  typeText(line2);
+  typeText(line3);
+  std::this_thread::sleep_for(std::chrono::milliseconds(500));
+  typeText(line4);
+}
+
+static void playDeathSequence() {
+  for (int n = 0; n < 10; ++n)
+    std::cout << "\n";
+
+  std::cout << std::string(32, ' ') << "[ CONNECTION LOST ]" << std::endl;
+  std::cout << std::string(34, ' ') << "SIGNAL NULL" << std::endl;
+
+  for (int n = 0; n < 10; ++n)
+    std::cout << "\n";
+}
+
+void typeText(const std::string &text, int speedMs = 40) {
+  for (char c : text) {
+    std::cout << c << std::flush;
+    std::this_thread::sleep_for(std::chrono::milliseconds(speedMs));
+  }
+}
+
+void playHealingAnimation(std::string statusMessage) {
+  std::cout << "\n[!] INITIATING BIO-RECONSTRUCTION...\n";
+
+  // Progress Bar
+  std::cout << "PROGRESS: [";
+  for (int i = 0; i < 20; ++i) {
+    std::cout << "■" << std::flush;
+    std::this_thread::sleep_for(std::chrono::milliseconds(30));
+  }
+  std::cout << "] 100%\n";
+
+  // Display the status
+  typeText("SYSTEM OS: " + statusMessage + "\n\n");
+}
+
 auto stutterText = [](const std::string &text) {
   for (char c : text) {
     std::cout << "\033[1;31m" << c << "\033[0m" << std::flush;
@@ -302,14 +311,20 @@ auto stutterText = [](const std::string &text) {
 
 // MAIN
 int main() {
+  // TODO: Seed rand() here — e.g. srand(static_cast<unsigned>(time(nullptr)))
+  // — otherwise damage rolls are identical every run. Consider switching to
+  // <random> for proper randomness.
   bool windowClosed = {false};
-  Player mainPlayer; // creates the player character
-  Player::playIntro();
+  Player mainPlayer;
+  playIntro();
   mainPlayer.getTotalHealth();
 
   while (!windowClosed) {
-    Player::handlePlayerInput(mainPlayer, windowClosed);
+    handlePlayerInput(mainPlayer, windowClosed);
     mainPlayer.getTotalHealth();
+    // TODO: Fix dead-code bug — the <= 200 branch always fires first, making
+    // the <= 100 and <= 40 branches unreachable. Reverse the order (most
+    // severe first) or use separate if-statements.
     if (mainPlayer.m_overallHealth <= 200) {
       std::cout
           << "[!] WARNING: BIOMETRIC FEED UNSTABLE. SEEK RECONSTRUCTION. \n";
@@ -328,6 +343,12 @@ int main() {
     }
   }
 
-  Player::playDeathSequence();
+  // TODO: playDeathSequence() runs unconditionally, even on normal EXIT.
+  // Track whether the player died vs. quit and only call this on death.
+  playDeathSequence();
+  // TODO: Replace this placeholder with a proper solution (e.g. system("pause")
+  // or configure the build to keep the console open without polluting source).
+  int keepWindowOpenPleaseForRightNow;
+  std::cin >> keepWindowOpenPleaseForRightNow;
   return 0;
 }
