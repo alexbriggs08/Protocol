@@ -1,7 +1,18 @@
 {
   "permissions": {
     "allow": [
-      "Bash(cmake --version)"
+      "Bash(cmake --version)",
+      "Read(//opt/homebrew/Cellar/llvm/21.1.8_1/bin/**)",
+      "Bash(/opt/homebrew/opt/llvm/bin/clang++ --version)",
+      "Bash(/opt/homebrew/opt/llvm/bin/clang++ -std=c++26 -x c++ - -o /dev/null)",
+      "Read(//Library/Developer/CommandLineTools/SDKs/**)",
+      "Bash(xcrun --show-sdk-path)",
+      "Bash(xcrun clang++ --version)",
+      "Bash(xcrun clang++ -std=c++23 -x c++ - -o /dev/null)",
+      "Bash(xcrun clang++ -std=c++2b -x c++ - -o /dev/null)",
+      "Bash(xcrun clang++ -std=c++26 -x c++ - -o /dev/null)",
+      "Bash(xcrun:*)"
     ]
-  }
+  },
+  "outputStyle": "Learning"
 }

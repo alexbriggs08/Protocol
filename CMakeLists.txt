@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.10.0) # This is the current project minimum cmake version requirement.
-project(protocol VERSION 0.1.0 LANGUAGES C CXX) # this is naming the project
+project(protocol VERSION 0.2.3.2 LANGUAGES C CXX) # this is naming the project
 
-# Ensure we use C++17 for features like std::clamp
-set(CMAKE_CXX_STANDARD 17)
+# Ensure we use C++26 for latest language features
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 INCLUDE_DIRECTORIES(include/raylib.h) # This is what will include raylib and other assets and libs. 
