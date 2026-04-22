@@ -4,14 +4,15 @@
 #include <cstdlib>
 #include <iostream>
 #include <string>
+#include "Item.h"
 
-void playHealingAnimation(std::string statusMessage);
+void playHealingAnimation(const std::string &statusMessage);
 
 enum class BodyPart { Head, Torso, LeftArm, RightArm, LeftLeg, RightLeg, None };
 
 class Player {
 public:
-  // Health and Limbs
+  // Health & Limbs — max HP: head=40, torso=60, arms/legs=75 (total max 400)
   int m_overallHealth;
   int m_head;
   int m_leftArm;
@@ -19,17 +20,38 @@ public:
   int m_torso;
   int m_leftLeg;
   int m_rightLeg;
-  // Armour
-  // TODO: Create armour system; later ballistic system.
-  int m_armour;
-  // Survival Mechanics
-  // TODO: m_armour, m_hunger, m_thirst, and m_temperature are never initialized
-  // in the constructor (garbage values) and are unused — initialize or remove
-  // them.
-  int m_radiation;
-  int m_hunger;
-  int m_thirst;
-  int m_temperature;
+
+  // Survival stats — all range 0–100
+  int m_radiation;   // causes damage when >= 40
+  float m_energy;
+  float m_hydration;
+  Inventory m_inventory;
+
+  // Applies an item. healLimb items require a target BodyPart.
+  bool applyItem(const Item &item, BodyPart target = BodyPart::None) {
+    switch (item.effect) {
+    case ItemEffect::healLimb:
+      if (target == BodyPart::None) {
+        std::cout << "LIMB UNSPECIFIED, ABORTING RECONSTRUCTION\n";
+        return false;
+      }
+      healLimb(target, static_cast<int>(item.magnitude));
+      return true;
+    case ItemEffect::reduceRadiation:
+      m_radiation = std::max(0, m_radiation - static_cast<int>(item.magnitude));
+      std::cout << item.useMessage << "\n";
+      return true;
+    case ItemEffect::restoreEnergy:
+      m_energy = std::clamp(m_energy + item.magnitude, 0.0f, 100.0f);
+      std::cout << item.useMessage << "\n";
+      return true;
+    case ItemEffect::restoreHydration:
+      m_hydration = std::clamp(m_hydration + item.magnitude, 0.0f, 100.0f);
+      std::cout << item.useMessage << "\n";
+      return true;
+    }
+    return false;
+  }
 
   BodyPart stringToBodyPart(std::string str) {
     std::transform(str.begin(), str.end(), str.begin(), ::toupper);
@@ -56,50 +78,10 @@ public:
 
   Player()
       : m_head(40), m_torso(60), m_leftArm(75), m_leftLeg(75), m_rightArm(75),
-        m_rightLeg(75), m_radiation(0), m_hunger(0), m_thirst(0),
-        m_temperature(37) {}
+        m_rightLeg(75), m_radiation(0), m_energy(100), m_hydration(100) {}
 
-  void healLimb() {
-    std::string limbChoice = {};
-    std::cout << "Which Limb? ";
-    std::getline(std::cin >> std::ws, limbChoice);
-    BodyPart part = stringToBodyPart(limbChoice);
 
-    std::string msg = "";
-
-    switch (part) {
-    case BodyPart::Head:
-      m_head = std::clamp(m_head + 15, 0, 40);
-      msg = "COGNITIVE COHERENCE STABILIZING... NEURAL PLASTICITY OPTIMIZED.";
-      break;
-    case BodyPart::Torso:
-      m_torso = std::clamp(m_torso + 15, 0, 60);
-      msg = "CAVITY PRESSURE NOMINAL... ORGANIC INTEGRITY RESTORED.";
-      break;
-    case BodyPart::LeftArm:
-    case BodyPart::RightArm:
-      if (part == BodyPart::LeftArm)
-        m_leftArm = std::clamp(m_leftArm + 15, 0, 75);
-      else
-        m_rightArm = std::clamp(m_rightArm + 15, 0, 75);
-      msg = "MOTOR FUNCTION RECALIBRATING... ACTUATOR TENSION SET TO 100%.";
-      break;
-    case BodyPart::LeftLeg:
-    case BodyPart::RightLeg:
-      if (part == BodyPart::LeftLeg)
-        m_leftLeg = std::clamp(m_leftLeg + 15, 0, 75);
-      else
-        m_rightLeg = std::clamp(m_rightLeg + 15, 0, 75);
-      msg = "KINETIC STABILIZERS ENGAGED... BONE DENSITY REINFORCED.";
-      break;
-    default:
-      std::cout << "Invalid body part!" << '\n';
-      return;
-    }
-
-    playHealingAnimation(msg);
-  }
-
+  // Damages a limb. Level 1=light, 2=medium, 3=heavy.
   void damagePlayer(BodyPart limb, int damageLevel) {
     if (damageLevel == 1) {
       switch (limb) {
@@ -183,6 +165,7 @@ public:
     }
   }
 
+  // Dead if head hits 0, or overall health hits 0.
   bool isDead() {
     if (m_head <= 0) {
       std::cout << "You have died.";
@@ -193,5 +176,42 @@ public:
     } else {
       return false;
     }
+  }
+
+  
+
+private:
+  void healLimb(BodyPart part, int amount) {
+    std::string msg;
+    switch (part) {
+    case BodyPart::Head:
+      m_head = std::clamp(m_head + amount, 0, 40);
+      msg = "COGNITIVE COHERENCE STABILIZING... NEURAL PLASTICITY OPTIMIZED.";
+      break;
+    case BodyPart::Torso:
+      m_torso = std::clamp(m_torso + amount, 0, 60);
+      msg = "CAVITY PRESSURE NOMINAL... ORGANIC INTEGRITY RESTORED.";
+      break;
+    case BodyPart::LeftArm:
+    case BodyPart::RightArm:
+      if (part == BodyPart::LeftArm)
+        m_leftArm = std::clamp(m_leftArm + amount, 0, 75);
+      else
+        m_rightArm = std::clamp(m_rightArm + amount, 0, 75);
+      msg = "MOTOR FUNCTION RECALIBRATING... ACTUATOR TENSION SET TO 100%.";
+      break;
+    case BodyPart::LeftLeg:
+    case BodyPart::RightLeg:
+      if (part == BodyPart::LeftLeg)
+        m_leftLeg = std::clamp(m_leftLeg + amount, 0, 75);
+      else
+        m_rightLeg = std::clamp(m_rightLeg + amount, 0, 75);
+      msg = "KINETIC STABILIZERS ENGAGED... BONE DENSITY REINFORCED.";
+      break;
+    default:
+      std::cout << "INVALID BODY PART.\n";
+      return;
+    }
+    playHealingAnimation(msg);
   }
 };
