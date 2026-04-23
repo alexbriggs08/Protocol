@@ -5,11 +5,14 @@ project(protocol VERSION 0.2.3.2 LANGUAGES C CXX) # this is naming the project
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-INCLUDE_DIRECTORIES(include/raylib.h) # This is what will include raylib and other assets and libs. 
+INCLUDE_DIRECTORIES(include/raylib.h) # This is what will include raylib and other assets and libs.
+
+# Generate version.h from version.h.in, injecting the project version string
+configure_file(src/version.h.in src/version.h)
 
 # Standard executable (Terminal-based)
 add_executable(protocol src/main.cpp) # creates the executable
-target_include_directories(protocol PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_include_directories(protocol PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_BINARY_DIR}/src)
 
 # Apply static linking ONLY when cross-compiling for Windows
 if(WIN32)

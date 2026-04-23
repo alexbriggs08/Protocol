@@ -65,6 +65,7 @@ public:
   bool isEmpty() const { return stacks.empty(); }
   int size() const { return static_cast<int>(stacks.size()); }
   Item getItem(int index) const { return stacks[index].item; }
+  int getCount(int index) const { return stacks[index].count; }
 
 private:
   struct ItemStack {

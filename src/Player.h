@@ -78,7 +78,7 @@ public:
 
   Player()
       : m_head(40), m_torso(60), m_leftArm(75), m_leftLeg(75), m_rightArm(75),
-        m_rightLeg(75), m_radiation(0), m_energy(100), m_hydration(100) {}
+        m_rightLeg(75), m_radiation(0), m_energy(100.0f), m_hydration(100.0f) {}
 
 
   // Damages a limb. Level 1=light, 2=medium, 3=heavy.
