@@ -23,11 +23,11 @@ static constexpr int   MAX_HISTORY  = 20;
 static constexpr float CURSOR_BLINK = 0.5f;
 static constexpr float DECAY_TICK   = 1.0f;
 
-static const Color C_LIME   = {57,  255, 20,  255};  // #39FF14
-static const Color C_DIM    = {42,  201, 16,  255};  // #2AC910
-static const Color C_HUD_BG = {10,  26,  0,   255};  // #0A1A00
-static const Color C_AMBER  = {255, 165, 0,   255};  // #FFA500
-static const Color C_RED    = {255, 34,  34,  255};  // #FF2222
+static constexpr Color C_LIME   = {57,  255, 20,  255};  // #39FF14
+static constexpr Color C_DIM    = {42,  201, 16,  255};  // #2AC910
+static constexpr Color C_HUD_BG = {10,  26,  0,   255};  // #0A1A00
+static constexpr Color C_AMBER  = {255, 165, 0,   255};  // #FFA500
+static constexpr Color C_RED    = {255, 34,  34,  255};  // #FF2222
 
 // ============================================================
 // ENUMS
@@ -55,6 +55,7 @@ struct TerminalBuffer {
     }
 
     void scrollUp(int n = 3) {
+        if (lines.empty()) return;
         scrollOffset = std::min(scrollOffset + n, (int)lines.size() - 1);
     }
     void scrollDown(int n = 3) {
