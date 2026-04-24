@@ -29,8 +29,15 @@ if(APPLE)
 endif()
 
 # Windows static linking
+# NOTE: for cross-compilation from macOS, CMAKE_PREFIX_PATH must point to a
+# MinGW-built raylib — the macOS brew install is not usable for cross-compile.
 if(WIN32)
     target_link_options(protocol PRIVATE "-static" "-static-libgcc" "-static-libstdc++")
+endif()
+
+# Warn at configure time if the font asset is missing (run Task 2 to download it)
+if(NOT EXISTS "${CMAKE_SOURCE_DIR}/assets/fonts/ShareTechMono-Regular.ttf")
+    message(WARNING "Font file missing: assets/fonts/ShareTechMono-Regular.ttf — download it before running the game.")
 endif()
 
 # Copy assets/ directory next to the built executable after each build
