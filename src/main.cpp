@@ -184,6 +184,127 @@ static void drawInputLine(const InputState& st, Font font, int screenW, int scre
 static void drawHUD(const Player& player, Font font, int screenW, int screenH);
 
 // ============================================================
-// STUB — filled in subsequent tasks
+// RENDERING — TERMINAL AREA
+// ============================================================
+static void drawTerminal(const TerminalBuffer& buf, const AnimationQueue& anim,
+                         Font font, int screenW, int screenH) {
+    int termH      = screenH - HUD_H - INPUT_H;
+    int maxVisible = termH / LINE_H;
+    int totalLines = (int)buf.lines.size() + (anim.isActive() ? 1 : 0);
+    int startIdx   = std::max(0, (int)buf.lines.size() - maxVisible - buf.scrollOffset);
+
+    // Scroll indicator (right edge strip)
+    if (buf.scrollOffset > 0 && totalLines > maxVisible) {
+        int indicH = std::max(20, termH * maxVisible / totalLines);
+        int indicY = termH - indicH
+            - (buf.scrollOffset * (termH - indicH)
+               / std::max(totalLines - maxVisible, 1));
+        DrawRectangle(screenW - 4, 0,      4, termH,  {42, 201, 16, 40});
+        DrawRectangle(screenW - 4, indicY, 4, indicH, C_LIME);
+    }
+
+    int y = 4;
+    for (int i = startIdx; i < (int)buf.lines.size() && y + LINE_H <= termH; ++i) {
+        DrawTextEx(font, buf.lines[i].text.c_str(),
+                   {4.f, (float)y}, FONT_SZ, 1, buf.lines[i].color);
+        y += LINE_H;
+    }
+
+    // Partial animation line rendered below committed lines
+    if (anim.isActive() && buf.scrollOffset == 0 && y + LINE_H <= termH) {
+        DrawTextEx(font, anim.currentPartial().c_str(),
+                   {4.f, (float)y}, FONT_SZ, 1, anim.currentColor());
+    }
+}
+
+// ============================================================
+// RENDERING — INPUT LINE
+// ============================================================
+static void drawInputLine(const InputState& st, Font font, int screenW, int screenH) {
+    int y = screenH - HUD_H - INPUT_H;
+    DrawLine(0, y, screenW, y, {42, 201, 16, 100});
+
+    const char* promptStr =
+        st.mode == InputMode::Command     ? "[PROTOCOL]> "         :
+        st.mode == InputMode::LimbSelect  ? "TARGET LIMB: "        :
+                                            "DAMAGE LEVEL [1-3]: ";
+
+    std::string display = promptStr + st.current;
+    if (st.cursorVis) display += '_';
+    DrawTextEx(font, display.c_str(), {4.f, (float)(y + 4)}, FONT_SZ, 1, C_DIM);
+}
+
+// ============================================================
+// RENDERING — HUD BAR
+// ============================================================
+static void drawHUD(const Player& player, Font font, int screenW, int screenH) {
+    int y = screenH - HUD_H;
+    DrawRectangle(0, y, screenW, HUD_H, C_HUD_BG);
+    DrawLine(0, y, screenW, y, C_LIME);
+
+    std::string row1 = std::format(
+        "OVERALL:{:>4}  HEAD:{:>3}  TORSO:{:>3}  "
+        "L.ARM:{:>3}  R.ARM:{:>3}  L.LEG:{:>3}  R.LEG:{:>3}",
+        player.m_overallHealth,
+        player.m_head, player.m_torso,
+        player.m_leftArm, player.m_rightArm,
+        player.m_leftLeg, player.m_rightLeg);
+
+    std::string row2 = std::format(
+        "ENERGY:{:>5.1f}  HYDRATION:{:>5.1f}  RADIATION:{:>3}",
+        player.m_energy, player.m_hydration, player.m_radiation);
+
+    DrawTextEx(font, row1.c_str(),
+               {4.f, (float)(y + 4)},          FONT_SZ, 1, C_LIME);
+    DrawTextEx(font, row2.c_str(),
+               {4.f, (float)(y + 4 + LINE_H)}, FONT_SZ, 1, C_LIME);
+}
+
+// ============================================================
+// TERMINAL CONTENT HELPERS
+// ============================================================
+static void pushMainMenu(TerminalBuffer& buf) {
+    std::string vpad(26 - (int)std::string(PROJECT_VERSION).size(), ' ');
+    buf.push("");
+    buf.push("╔══════════════════════════════════════════════╗");
+    buf.push("║  PROTOCOL OS // v" + std::string(PROJECT_VERSION) + vpad + "║");
+    buf.push("╠══════════════════════════════════════════════╣");
+    buf.push("║  [1] NEW GAME                                ║");
+    buf.push("║  [2] LOAD GAME                               ║");
+    buf.push("║  [3] QUIT                                    ║");
+    buf.push("╚══════════════════════════════════════════════╝");
+    buf.push("");
+}
+
+static void pushCommandMenu(TerminalBuffer& buf) {
+    buf.push("");
+    buf.push("╔══════════════════════════════════════════════╗");
+    buf.push("║  PROTOCOL OS // COMMAND INTERFACE v0.1       ║");
+    buf.push("╠══════════════════════════════════════════════╣");
+    buf.push("║  SYS_HEAL    » Initiate bio-reconstruction   ║");
+    buf.push("║  SYS_DECON   » Suppress radiation            ║");
+    buf.push("║  INT_CHARGE  » Restore energy reserves       ║");
+    buf.push("║  INT_COOLANT » Restore hydration             ║");
+    buf.push("║  DAMAGE      » Apply damage to limb          ║");
+    buf.push("║  CURRENT     » Display biometric feed        ║");
+    buf.push("║  SHW_STATS   » Display survival metrics      ║");
+    buf.push("║  SHW_INV     » Display inventory manifest    ║");
+    buf.push("║  SYS_SAVE    » Save current session          ║");
+    buf.push("║  SYS_LOAD    » Restore saved session         ║");
+    buf.push("║  SYS_HELP    » Reprint this menu             ║");
+    buf.push("║  EXIT        » Terminate session             ║");
+    buf.push("╚══════════════════════════════════════════════╝");
+    buf.push("");
+}
+
+static void pushIntro(AnimationQueue& anim) {
+    anim.typeText("PROTOCOL OS [Version 0.1.0]...\n");
+    anim.typeText("Initializing biometric link...\n");
+    anim.typeText("Limb status: NOMINAL.\n");
+    anim.typeText("Ready for input.\n\n");
+}
+
+// ============================================================
+// STUB — filled in Task 5
 // ============================================================
 int main() { return 0; }
