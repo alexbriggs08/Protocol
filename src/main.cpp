@@ -28,6 +28,8 @@ static constexpr Color C_DIM    = {42,  201, 16,  255};  // #2AC910
 static constexpr Color C_HUD_BG = {10,  26,  0,   255};  // #0A1A00
 static constexpr Color C_AMBER  = {255, 165, 0,   255};  // #FFA500
 static constexpr Color C_RED    = {255, 34,  34,  255};  // #FF2222
+static constexpr Color C_DIM_TRACK = {42,  201, 16,  40};   // scrollbar track (dim)
+static constexpr Color C_DIM_LINE  = {42,  201, 16,  100};  // separator line (mid)
 
 // ============================================================
 // ENUMS
@@ -199,7 +201,8 @@ static void drawTerminal(const TerminalBuffer& buf, const AnimationQueue& anim,
         int indicY = termH - indicH
             - (buf.scrollOffset * (termH - indicH)
                / std::max(totalLines - maxVisible, 1));
-        DrawRectangle(screenW - 4, 0,      4, termH,  {42, 201, 16, 40});
+        indicY = std::max(0, indicY);
+        DrawRectangle(screenW - 4, 0,      4, termH,  C_DIM_TRACK);
         DrawRectangle(screenW - 4, indicY, 4, indicH, C_LIME);
     }
 
@@ -222,7 +225,7 @@ static void drawTerminal(const TerminalBuffer& buf, const AnimationQueue& anim,
 // ============================================================
 static void drawInputLine(const InputState& st, Font font, int screenW, int screenH) {
     int y = screenH - HUD_H - INPUT_H;
-    DrawLine(0, y, screenW, y, {42, 201, 16, 100});
+    DrawLine(0, y, screenW, y, C_DIM_LINE);
 
     const char* promptStr =
         st.mode == InputMode::Command     ? "[PROTOCOL]> "         :
@@ -237,6 +240,7 @@ static void drawInputLine(const InputState& st, Font font, int screenW, int scre
 // ============================================================
 // RENDERING — HUD BAR
 // ============================================================
+// HUD_H must be >= 4 + 2 * LINE_H (currently 44); kept at 60 for breathing room.
 static void drawHUD(const Player& player, Font font, int screenW, int screenH) {
     int y = screenH - HUD_H;
     DrawRectangle(0, y, screenW, HUD_H, C_HUD_BG);
@@ -264,7 +268,8 @@ static void drawHUD(const Player& player, Font font, int screenW, int screenH) {
 // TERMINAL CONTENT HELPERS
 // ============================================================
 static void pushMainMenu(TerminalBuffer& buf) {
-    std::string vpad(26 - (int)std::string(PROJECT_VERSION).size(), ' ');
+    int padCount = std::max(0, 26 - (int)std::string(PROJECT_VERSION).size());
+    std::string vpad(padCount, ' ');
     buf.push("");
     buf.push("╔══════════════════════════════════════════════╗");
     buf.push("║  PROTOCOL OS // v" + std::string(PROJECT_VERSION) + vpad + "║");
@@ -298,7 +303,7 @@ static void pushCommandMenu(TerminalBuffer& buf) {
 }
 
 static void pushIntro(AnimationQueue& anim) {
-    anim.typeText("PROTOCOL OS [Version 0.1.0]...\n");
+    anim.typeText(std::string("PROTOCOL OS [Version ") + PROJECT_VERSION + "]...\n");
     anim.typeText("Initializing biometric link...\n");
     anim.typeText("Limb status: NOMINAL.\n");
     anim.typeText("Ready for input.\n\n");
