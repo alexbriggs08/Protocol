@@ -13,7 +13,6 @@ configure_file(src/version.h.in src/version.h)
 add_executable(protocol src/main.cpp)
 
 target_include_directories(protocol PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_BINARY_DIR}/src
 )
 
@@ -35,9 +34,9 @@ if(WIN32)
     target_link_options(protocol PRIVATE "-static" "-static-libgcc" "-static-libstdc++")
 endif()
 
-# Warn at configure time if the font asset is missing (run Task 2 to download it)
+# Warn at configure time if the font asset is missing
 if(NOT EXISTS "${CMAKE_SOURCE_DIR}/assets/fonts/ShareTechMono-Regular.ttf")
-    message(WARNING "Font file missing: assets/fonts/ShareTechMono-Regular.ttf — download it before running the game.")
+    message(WARNING "Font file missing: assets/fonts/ShareTechMono-Regular.ttf")
 endif()
 
 # Copy assets/ directory next to the built executable after each build
@@ -47,7 +46,3 @@ add_custom_command(TARGET protocol POST_BUILD
         $<TARGET_FILE_DIR:protocol>/assets
     COMMENT "Copying assets"
 )
-
-set(CPACK_PROJECT_NAME ${PROJECT_NAME})
-set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
-include(CPack)
