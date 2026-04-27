@@ -273,17 +273,26 @@ static void drawHUD(const Player &player, Font font, int screenW, int screenH) {
 // TERMINAL CONTENT HELPERS
 // ============================================================
 static void pushMainMenu(TerminalBuffer &buf) {
-  int padCount = std::max(0, 26 - (int)std::string(PROJECT_VERSION).size());
-  std::string vpad(padCount, ' ');
-  buf.push("");
-  buf.push("╔══════════════════════════════════════════════╗");
-  buf.push("║  PROTOCOL OS // v" + std::string(PROJECT_VERSION) + vpad + "║");
-  buf.push("╠══════════════════════════════════════════════╣");
-  buf.push("║  [1] NEW GAME                                ║");
-  buf.push("║  [2] LOAD GAME                               ║");
-  buf.push("║  [3] QUIT                                    ║");
-  buf.push("╚══════════════════════════════════════════════╝");
-  buf.push("");
+    std::string ver    = PROJECT_VERSION;
+    int         padCnt = std::max(0, 46 - 38 - (int)ver.size());
+    std::string tagPad(padCnt, ' ');
+
+    buf.push("╔══════════════════════════════════════════════╗");
+    buf.push("║                                              ║");
+    buf.push("║  |¯\\ |¯\\ /¯\\ ¯|¯ /¯\\ /¯  /¯\\ |             ║");
+    buf.push("║  |_/ |-/ | |  |  | | |   | | |             ║");
+    buf.push("║  |   |_\\ \\_/  |  \\_/ \\__ \\_/ |__           ║");
+    buf.push("║                                              ║");
+    buf.push("╠══════════════════════════════════════════════╣");
+    buf.push("║  AUTONOMOUS SURVIVAL INTERFACE  //  v" + ver + tagPad + "║");
+    buf.push("╠══════════════════════════════════════════════╣");
+    buf.push("║                                              ║");
+    buf.push("║    [1]  NEW SESSION                          ║");
+    buf.push("║    [2]  RESTORE SESSION                      ║");
+    buf.push("║    [3]  TERMINATE                            ║");
+    buf.push("║                                              ║");
+    buf.push("╚══════════════════════════════════════════════╝");
+    buf.push("");
 }
 
 static void pushCommandMenu(TerminalBuffer &buf) {
