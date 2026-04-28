@@ -27,11 +27,17 @@ if(APPLE)
     )
 endif()
 
-# Windows static linking
-# NOTE: for cross-compilation from macOS, CMAKE_PREFIX_PATH must point to a
-# MinGW-built raylib — the macOS brew install is not usable for cross-compile.
+# Windows static linking + system libs required by raylib
+# NOTE: CMAKE_PREFIX_PATH / raylib_DIR must point to a MinGW-built raylib;
+# the macOS brew install is not usable for cross-compilation.
 if(WIN32)
     target_link_options(protocol PRIVATE "-static" "-static-libgcc" "-static-libstdc++")
+    target_link_libraries(protocol PRIVATE
+        opengl32
+        gdi32
+        winmm
+        kernel32
+    )
 endif()
 
 # Warn at configure time if the font asset is missing

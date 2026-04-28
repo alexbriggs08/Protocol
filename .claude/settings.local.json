@@ -1,18 +1,28 @@
 {
   "permissions": {
     "allow": [
-      "Bash(cmake --version)",
-      "Read(//opt/homebrew/Cellar/llvm/21.1.8_1/bin/**)",
-      "Bash(/opt/homebrew/opt/llvm/bin/clang++ --version)",
-      "Bash(/opt/homebrew/opt/llvm/bin/clang++ -std=c++26 -x c++ - -o /dev/null)",
-      "Read(//Library/Developer/CommandLineTools/SDKs/**)",
-      "Bash(xcrun --show-sdk-path)",
-      "Bash(xcrun clang++ --version)",
-      "Bash(xcrun clang++ -std=c++23 -x c++ - -o /dev/null)",
-      "Bash(xcrun clang++ -std=c++2b -x c++ - -o /dev/null)",
-      "Bash(xcrun clang++ -std=c++26 -x c++ - -o /dev/null)",
-      "Bash(xcrun:*)"
+      "Bash(cmake --build out/build/Mac-Debug)",
+      "Read(//opt/homebrew/**)",
+      "Read(//usr/local/**)",
+      "Bash(ar -t /opt/homebrew/lib/libraylib.a)",
+      "Bash(xargs -I{} bash -c 'ar -x --output=/tmp/rtest /opt/homebrew/lib/libraylib.a {} 2>/dev/null; file /tmp/rtest/{}')",
+      "Bash(brew info *)",
+      "Bash(git clone *)",
+      "Bash(cmake -S deps/raylib-src -B deps/raylib-mingw-build -G 'Unix Makefiles' -DCMAKE_SYSTEM_NAME=Windows -DCMAKE_C_COMPILER=/opt/homebrew/bin/x86_64-w64-mingw32-gcc -DCMAKE_INSTALL_PREFIX=__CMDSUB_OUTPUT__/deps/raylib-mingw -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DWITH_PIC=ON)",
+      "Bash(cmake --build deps/raylib-mingw-build --target install -- -j4)",
+      "Bash(ar -t deps/raylib-mingw/lib/libraylib.a)",
+      "Bash(xargs -I{} sh -c 'ar x --output=/tmp/rwin deps/raylib-mingw/lib/libraylib.a {} 2>/dev/null; file /tmp/rwin/{}')",
+      "Bash(file *.obj)",
+      "Bash(/opt/homebrew/Cellar/mingw-w64/14.0.0/toolchain-x86_64/bin/x86_64-w64-mingw32-objdump -f deps/raylib-mingw/lib/libraylib.a)",
+      "Bash(cmake --preset Windows-Release)",
+      "Bash(cmake --preset Windows-Release -DCMAKE_VERBOSE_MAKEFILE=ON)",
+      "Bash(cmake --build out/build/Windows-Release)",
+      "WebFetch(domain:api.anthropic.com)",
+      "Bash(gunzip -c \"/Users/alex/.claude/projects/-Users-alex-Desktop-dev-protocol/c44c1056-c2c2-4657-afee-c45b38aef186/tool-results/webfetch-1777388188427-sqo1zb.bin\")",
+      "Bash(cmake --build build)",
+      "Bash(cmake --preset Mac-Debug)",
+      "Bash(python3 -c ' *)",
+      "Bash(git -C /Users/alex/Desktop/dev/protocol status --short)"
     ]
-  },
-  "outputStyle": "Explanatory"
+  }
 }

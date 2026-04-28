@@ -32,7 +32,9 @@
                 "CMAKE_SYSTEM_NAME": "Windows",
                 "CMAKE_C_COMPILER": "/opt/homebrew/bin/x86_64-w64-mingw32-gcc",
                 "CMAKE_CXX_COMPILER": "/opt/homebrew/bin/x86_64-w64-mingw32-g++",
-                "CMAKE_BUILD_TYPE": "Release"
+                "CMAKE_BUILD_TYPE": "Release",
+                "CMAKE_PREFIX_PATH": "${sourceDir}/deps/raylib-mingw",
+                "raylib_DIR": "${sourceDir}/deps/raylib-mingw/lib/cmake/raylib"
             }
         },
         {

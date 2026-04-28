@@ -15,29 +15,38 @@
 // ============================================================
 // CONSTANTS
 // ============================================================
-static constexpr int DEFAULT_W = 1024;
-static constexpr int DEFAULT_H = 768;
-static constexpr int HUD_H = 60;
-static constexpr int INPUT_H = 25;
-static constexpr int FONT_SZ = 16;
-static constexpr int LINE_H = FONT_SZ + 4;
-static constexpr int MAX_LINES = 200;
+static constexpr int DEFAULT_W  = 1024;
+static constexpr int DEFAULT_H  = 768;
+static constexpr int TOPBAR_H   = 26;
+static constexpr int HUD_H      = 60;
+static constexpr int INPUT_H    = 26;
+static constexpr int SIDEBAR_W  = 190;
+static constexpr int FONT_SZ    = 16;
+static constexpr int LINE_H     = FONT_SZ + 4;
+static constexpr int MAX_LINES  = 200;
 static constexpr int MAX_HISTORY = 20;
 static constexpr float CURSOR_BLINK = 0.5f;
-static constexpr float DECAY_TICK = 1.0f;
+static constexpr float DECAY_TICK   = 1.0f;
 
-static constexpr Color C_LIME = {57, 255, 20, 255};     // #39FF14
-static constexpr Color C_DIM = {42, 201, 16, 255};      // #2AC910
-static constexpr Color C_HUD_BG = {10, 26, 0, 255};     // #0A1A00
-static constexpr Color C_AMBER = {255, 165, 0, 255};    // #FFA500
-static constexpr Color C_RED = {255, 34, 34, 255};      // #FF2222
-static constexpr Color C_DIM_TRACK = {42, 201, 16, 40}; // scrollbar track (dim)
-static constexpr Color C_DIM_LINE = {42, 201, 16, 100}; // separator line (mid)
+// ── Amber CRT phosphor palette ────────────────────────────
+static constexpr Color C_AMBER     = {255, 176,   0, 255}; // #FFB000 primary
+static constexpr Color C_AMBER_DIM = {160, 112,   0, 255}; // #A07000 dim
+static constexpr Color C_AMBER_BRT = {255, 208,  96, 255}; // #FFD060 bright
+static constexpr Color C_BG        = { 10,   8,   0, 255}; // #0A0800
+static constexpr Color C_HUD_BG    = { 10,   8,   0, 255};
+static constexpr Color C_RED       = {255,  68,  34, 255}; // #FF4422
+static constexpr Color C_GREEN     = { 68, 255, 136, 255}; // #44FF88 heal
+static constexpr Color C_CYAN      = { 68, 204, 255, 255}; // #44CCFF drink
+static constexpr Color C_ORANGE    = {255, 136,   0, 255}; // #FF8800 low hp
+static constexpr Color C_YELLOW    = {255, 204,  68, 255}; // #FFCC44 eat
+static constexpr Color C_PURPLE    = {204, 136, 255, 255}; // #CC88FF talk/npc
+static constexpr Color C_DIM_TRACK = {255, 176,   0,  40};
+static constexpr Color C_DIM_LINE  = {255, 176,   0, 100};
 
 // ============================================================
 // ENUMS
 // ============================================================
-enum class AppState { MainMenu, Playing, Dead };
+enum class AppState { Boot, MainMenu, Playing, Dead };
 enum class InputMode { Command, LimbSelect, DamageLevel };
 
 // ============================================================
@@ -45,23 +54,22 @@ enum class InputMode { Command, LimbSelect, DamageLevel };
 // ============================================================
 struct ColoredLine {
   std::string text;
-  Color color = C_LIME;
+  Color color = C_AMBER;
 };
 
 struct TerminalBuffer {
   std::deque<ColoredLine> lines;
-  int scrollOffset = 0; // 0 = bottom, positive = scrolled up N lines
+  int scrollOffset = 0;
 
-  void push(const std::string &text, Color color = C_LIME) {
+  void push(const std::string &text, Color color = C_AMBER) {
     lines.push_back({text, color});
     if ((int)lines.size() > MAX_LINES)
       lines.pop_front();
-    scrollOffset = 0; // auto-scroll to bottom on new output
+    scrollOffset = 0;
   }
 
   void scrollUp(int n = 3) {
-    if (lines.empty())
-      return;
+    if (lines.empty()) return;
     scrollOffset = std::min(scrollOffset + n, (int)lines.size() - 1);
   }
   void scrollDown(int n = 3) { scrollOffset = std::max(scrollOffset - n, 0); }
@@ -69,24 +77,21 @@ struct TerminalBuffer {
 
 // ============================================================
 // ANIMATION QUEUE
-// replaces blocking typeText / stutterText sleep loops
 // ============================================================
 struct AnimEvent {
   std::string fullText;
-  int charsRevealed = 0;
-  float timer = 0.f;
-  float charDelay = 0.04f; // seconds per character
-  bool isStutter = false;
-  Color color = C_LIME;
+  int   charsRevealed = 0;
+  float timer    = 0.f;
+  float charDelay = 0.04f;
+  bool  isStutter = false;
+  Color color = C_AMBER;
 };
 
 struct AnimationQueue {
   std::deque<AnimEvent> events;
-  TerminalBuffer *buf = nullptr; // set before use
+  TerminalBuffer *buf = nullptr;
 
-  // Splits text on '\n' and enqueues each line as a separate event.
-  void enqueue(const std::string &text, float charDelayMs, bool stutter,
-               Color color) {
+  void enqueue(const std::string &text, float charDelayMs, bool stutter, Color color) {
     std::string line;
     for (char c : text) {
       if (c == '\n') {
@@ -100,37 +105,26 @@ struct AnimationQueue {
       events.push_back({line, 0, 0.f, charDelayMs / 1000.f, stutter, color});
   }
 
-  void typeText(const std::string &t, Color c = C_LIME) {
-    enqueue(t, 40.f, false, c);
-  }
-  void stutterText(const std::string &t) { enqueue(t, 30.f, true, C_RED); }
+  void typeText(const std::string &t, Color c = C_AMBER) { enqueue(t, 40.f, false, c); }
+  void stutterText(const std::string &t)                 { enqueue(t, 30.f, true,  C_RED); }
 
   bool isActive() const { return !events.empty(); }
   std::string currentPartial() const {
-    if (events.empty())
-      return "";
+    if (events.empty()) return "";
     return events.front().fullText.substr(0, events.front().charsRevealed);
   }
-  Color currentColor() const {
-    return events.empty() ? C_LIME : events.front().color;
-  }
+  Color currentColor() const { return events.empty() ? C_AMBER : events.front().color; }
 
-  // Call once per frame with delta time in seconds.
   void advance(float dt) {
-    if (events.empty() || !buf)
-      return;
+    if (events.empty() || !buf) return;
     AnimEvent &ev = events.front();
-
-    float delay =
-        ev.isStutter ? (rand() % 10 == 0 ? 0.2f : 0.03f) : ev.charDelay;
-
+    float delay = ev.isStutter ? (rand() % 10 == 0 ? 0.2f : 0.03f) : ev.charDelay;
     ev.timer += dt;
     while (ev.timer >= delay) {
       ev.timer -= delay;
       if (ev.charsRevealed < (int)ev.fullText.size()) {
         ev.charsRevealed++;
-        if (ev.isStutter)
-          delay = (rand() % 10 == 0 ? 0.2f : 0.03f);
+        if (ev.isStutter) delay = (rand() % 10 == 0 ? 0.2f : 0.03f);
       } else {
         buf->push(ev.fullText, ev.color);
         events.pop_front();
@@ -146,34 +140,88 @@ struct AnimationQueue {
 struct InputState {
   std::string current;
   std::vector<std::string> history;
-  int historyIdx = -1;
+  int   historyIdx  = -1;
   float cursorTimer = 0.f;
-  bool cursorVis = true;
-  InputMode mode = InputMode::Command;
-  std::string pendingCmd;  // "SYS_HEAL" or "DAMAGE"
-  std::string pendingLimb; // stored between DAMAGE prompts
+  bool  cursorVis   = true;
+  InputMode   mode = InputMode::Command;
+  std::string pendingCmd;
+  std::string pendingLimb;
+};
+
+// ============================================================
+// SIDEBAR ACTION FLASH STATE
+// ============================================================
+struct ActionFlash {
+  int   slot = -1; // 0-3 for quick actions
+  float timer = 0.f;
+  static constexpr float DURATION = 0.25f;
+
+  void trigger(int s) { slot = s; timer = DURATION; }
+  void advance(float dt) {
+    if (slot >= 0) { timer -= dt; if (timer <= 0.f) slot = -1; }
+  }
+  bool isActive(int s) const { return slot == s && timer > 0.f; }
+};
+
+// ============================================================
+// BOOT SEQUENCE STATE
+// ============================================================
+struct BootState {
+  struct Line { std::string text; Color color; float delay; };
+  std::vector<Line> lines;
+  std::vector<bool> visible;
+  float elapsed = 0.f;
+  bool  done    = false;
+
+  void init() {
+    std::string ver = std::string("PROTOCOL OS [") + PROJECT_VERSION + "]  BUILD 20260428";
+    lines = {
+      { ver,                                   C_AMBER_BRT, 0.00f },
+      { "Initializing memory banks...",         C_AMBER_DIM, 0.18f },
+      { "  > HEAP      [ OK ]",                 C_GREEN,     0.34f },
+      { "  > STACK     [ OK ]",                 C_GREEN,     0.45f },
+      { "  > SUBSYS    [ OK ]",                 C_GREEN,     0.56f },
+      { "Loading asset manifests...",            C_AMBER_DIM, 0.72f },
+      { "  > ZONES     loaded",                  C_GREEN,     0.82f },
+      { "  > ENTITIES  loaded",                  C_GREEN,     0.92f },
+      { "  > AUDIO     loaded",                  C_GREEN,     1.02f },
+      { "Checking save data...",                 C_AMBER_DIM, 1.18f },
+      { "  > 1 save file found",                 C_GREEN,     1.28f },
+      { "",                                      C_AMBER_DIM, 1.40f },
+      { "BIOMETRIC LINK ESTABLISHED.",           C_AMBER_BRT, 1.52f },
+      { "SYSTEM READY.",                         C_AMBER_BRT, 1.72f },
+    };
+    visible.assign(lines.size(), false);
+  }
+
+  void advance(float dt) {
+    if (done) return;
+    elapsed += dt;
+    bool allVis = true;
+    for (int i = 0; i < (int)lines.size(); ++i) {
+      if (elapsed >= lines[i].delay) visible[i] = true;
+      else allVis = false;
+    }
+    if (allVis && elapsed >= 2.2f) done = true;
+  }
 };
 
 // ============================================================
 // GLOBAL RENDERER CONTEXT
-// playHealingAnimation is declared in Player.h and defined here
-// so that Player::healLimb can output into the terminal buffer.
 // ============================================================
 static TerminalBuffer *g_tbuf = nullptr;
 static AnimationQueue *g_anim = nullptr;
 
 void playHealingAnimation(const std::string &statusMessage) {
-  if (!g_tbuf || !g_anim)
-    return;
-  g_tbuf->push("[!] INITIATING BIO-RECONSTRUCTION...");
-  g_tbuf->push("PROGRESS: [████████████████████] 100%");
-  g_anim->typeText("SYSTEM OS: " + statusMessage + "\n\n");
+  if (!g_tbuf || !g_anim) return;
+  g_tbuf->push("[!] INITIATING BIO-RECONSTRUCTION...", C_AMBER);
+  g_tbuf->push("PROGRESS: [====================] 100%",  C_GREEN);
+  g_anim->typeText("SYSTEM OS: " + statusMessage + "\n\n", C_GREEN);
 }
 
 // ============================================================
 // FORWARD DECLARATIONS
 // ============================================================
-static void pushMainMenu(TerminalBuffer &buf);
 static void pushCommandMenu(TerminalBuffer &buf);
 static void pushIntro(AnimationQueue &anim);
 static void handleCommand(const std::string &input, GameState &state,
@@ -182,45 +230,184 @@ static void handleCommand(const std::string &input, GameState &state,
 static void handleSubPrompt(const std::string &input, GameState &state,
                             TerminalBuffer &buf, AnimationQueue &anim,
                             InputState &inputSt);
+static void drawScanlines(int screenW, int screenH);
+static void drawTopBar(Font font, int screenW, AppState appState);
+static void drawSidebar(Font font, int screenW, int screenH, const ActionFlash &flash);
 static void drawTerminal(const TerminalBuffer &buf, const AnimationQueue &anim,
                          Font font, int screenW, int screenH);
-static void drawInputLine(const InputState &st, Font font, int screenW,
-                          int screenH);
+static void drawInputLine(const InputState &st, Font font, int screenW, int screenH);
 static void drawHUD(const Player &player, Font font, int screenW, int screenH);
+static void drawBoot(const BootState &boot, Font font, int screenW, int screenH);
+static void drawMainMenu(Font font, int screenW, int screenH, const InputState &inputSt);
+
+// ============================================================
+// RENDERING HELPERS
+// ============================================================
+static Color healthColor(float frac) {
+  if (frac > 0.7f) return C_GREEN;
+  if (frac > 0.4f) return C_AMBER;
+  if (frac > 0.2f) return C_ORANGE;
+  return C_RED;
+}
+
+static Color pulseRed() {
+  // Pulse between 60% and 100% opacity for critical indicators
+  float t = sinf((float)GetTime() * 8.f) * 0.5f + 0.5f;
+  unsigned char a = (unsigned char)(153 + (int)(t * 102.f));
+  return {C_RED.r, C_RED.g, C_RED.b, a};
+}
+
+// ============================================================
+// CRT SCANLINE OVERLAY + VIGNETTE
+// ============================================================
+static void drawScanlines(int screenW, int screenH) {
+  for (int y = 2; y < screenH; y += 4)
+    DrawRectangle(0, y, screenW, 2, {0, 0, 0, 46});
+}
+
+// Vignette applied to the game area (between topbar and HUD) to give the
+// terminal a curved-CRT 3D feel — outer edges are visibly darker.
+static void drawVignette(int screenW, int screenH) {
+  int yTop   = TOPBAR_H;
+  int yBot   = screenH - HUD_H;
+  int gameH  = yBot - yTop;
+  int hEdge  = screenW / 5;   // 20 % of screen width per side
+  int vEdge  = gameH  / 6;    // ~17 % of game height per edge
+
+  Color dark  = {0, 0, 0, 130};
+  Color clear = {0, 0, 0,   0};
+
+  DrawRectangleGradientH(0,               yTop, hEdge, gameH, dark,  clear); // left
+  DrawRectangleGradientH(screenW - hEdge, yTop, hEdge, gameH, clear, dark);  // right
+  DrawRectangleGradientV(0, yTop,          screenW, vEdge, dark,  clear);    // top
+  DrawRectangleGradientV(0, yBot - vEdge,  screenW, vEdge, clear, dark);     // bottom
+}
+
+// ============================================================
+// RENDERING — TOP STATUS BAR
+// ============================================================
+static void drawTopBar(Font font, int screenW, AppState appState) {
+  DrawRectangle(0, 0, screenW, TOPBAR_H, {8, 6, 0, 255});
+  DrawLine(0, TOPBAR_H - 1, screenW, TOPBAR_H - 1, C_DIM_LINE);
+
+  // Left: title
+  DrawTextEx(font, "PROTOCOL OS", {8.f, 5.f}, FONT_SZ, 1, C_AMBER_BRT);
+
+  // Centre: state info
+  const char *centre = (appState == AppState::Playing || appState == AppState::Dead)
+                           ? "SUBLEVEL 2 \x97 MAINTENANCE CORRIDOR"
+                           : "AUTONOMOUS SURVIVAL INTERFACE";
+  Vector2 csz = MeasureTextEx(font, centre, FONT_SZ - 2, 1);
+  DrawTextEx(font, centre, {(screenW - csz.x) * 0.5f, 7.f}, FONT_SZ - 2, 1, C_AMBER_DIM);
+
+  // Right: session time
+  double t = GetTime();
+  int hh = (int)(t / 3600);
+  int mm = (int)(t / 60) % 60;
+  int ss = (int)t % 60;
+  std::string timeStr = std::format("{:02d}:{:02d}:{:02d}", hh, mm, ss);
+  Vector2 tsz = MeasureTextEx(font, timeStr.c_str(), FONT_SZ - 2, 1);
+  DrawTextEx(font, timeStr.c_str(), {screenW - tsz.x - 10.f, 7.f}, FONT_SZ - 2, 1, C_AMBER_DIM);
+}
+
+// ============================================================
+// RENDERING — SIDEBAR
+// ============================================================
+static const char *SIDEBAR_ACTIONS[4] = {
+    "[1]  SYS_HEAL",
+    "[2]  INT_CHARGE",
+    "[3]  INT_COOLANT",
+    "[4]  SYS_DECON",
+};
+static const Color SIDEBAR_ACTION_COLORS[4] = {
+    C_GREEN, C_YELLOW, C_CYAN, C_AMBER,
+};
+static const char *MAP_ROWS[] = {
+    "+---+------+",
+    "|.  |  .  .|",
+    "|   @ .  ..|",
+    "|.  |  . ..|",
+    "+---+  . --+",
+    "    |  .   |",
+    "    +------+",
+};
+static constexpr int MAP_FONT = FONT_SZ - 4;
+
+static void drawSidebar(Font font, int screenW, int screenH, const ActionFlash &flash) {
+  int x    = screenW - SIDEBAR_W;
+  int yTop = TOPBAR_H;
+  int yBot = screenH - HUD_H;
+
+  // Background + left border
+  DrawRectangle(x, yTop, SIDEBAR_W, yBot - yTop, {8, 6, 0, 220});
+  DrawLine(x, yTop, x, yBot, C_DIM_LINE);
+
+  int cy = yTop + 10;
+
+  // ── QUICK ACTIONS ────────────────────────────────────────
+  DrawTextEx(font, "QUICK ACTIONS", {(float)(x + 8), (float)cy}, FONT_SZ - 4, 1, C_AMBER_DIM);
+  cy += LINE_H - 2;
+  DrawLine(x + 4, cy, screenW - 4, cy, {255, 176, 0, 25});
+  cy += 6;
+
+  for (int i = 0; i < 4; ++i) {
+    bool lit = flash.isActive(i);
+    Color col = lit ? SIDEBAR_ACTION_COLORS[i] : C_AMBER_DIM;
+    if (lit) {
+      DrawRectangle(x + 2, cy - 2, SIDEBAR_W - 4, LINE_H,
+                    {col.r, col.g, col.b, 35});
+    }
+    DrawTextEx(font, SIDEBAR_ACTIONS[i], {(float)(x + 10), (float)cy}, FONT_SZ - 2, 1, col);
+    cy += LINE_H;
+  }
+
+  cy += 6;
+  DrawLine(x + 4, cy, screenW - 4, cy, {255, 176, 0, 25});
+  cy += 10;
+
+  // ── SECTOR MAP ───────────────────────────────────────────
+  DrawTextEx(font, "SECTOR MAP", {(float)(x + 8), (float)cy}, FONT_SZ - 4, 1, C_AMBER_DIM);
+  cy += LINE_H - 2;
+
+  for (const char *row : MAP_ROWS) {
+    DrawTextEx(font, row, {(float)(x + 10), (float)cy}, MAP_FONT, 1,
+               {160, 112, 0, 170});
+    cy += MAP_FONT + 3;
+  }
+}
 
 // ============================================================
 // RENDERING — TERMINAL AREA
 // ============================================================
 static void drawTerminal(const TerminalBuffer &buf, const AnimationQueue &anim,
                          Font font, int screenW, int screenH) {
-  int termH = screenH - HUD_H - INPUT_H;
+  int termW = screenW - SIDEBAR_W;
+  int termH = screenH - TOPBAR_H - HUD_H - INPUT_H;
   int maxVisible = termH / LINE_H;
   int totalLines = (int)buf.lines.size() + (anim.isActive() ? 1 : 0);
   int startIdx =
       std::max(0, (int)buf.lines.size() - maxVisible - buf.scrollOffset);
 
-  // Scroll indicator (right edge strip)
+  // Scroll indicator (right edge of terminal, not sidebar)
   if (buf.scrollOffset > 0 && totalLines > maxVisible) {
     int indicH = std::max(20, termH * maxVisible / totalLines);
     int indicY = termH - indicH -
                  (buf.scrollOffset * (termH - indicH) /
                   std::max(totalLines - maxVisible, 1));
-    indicY = std::max(0, indicY);
-    DrawRectangle(screenW - 4, 0, 4, termH, C_DIM_TRACK);
-    DrawRectangle(screenW - 4, indicY, 4, indicH, C_LIME);
+    indicY = std::max(0, indicY) + TOPBAR_H;
+    DrawRectangle(termW - 4, TOPBAR_H, 4, termH, C_DIM_TRACK);
+    DrawRectangle(termW - 4, indicY, 4, indicH, C_AMBER);
   }
 
-  int y = 4;
-  for (int i = startIdx; i < (int)buf.lines.size() && y + LINE_H <= termH;
-       ++i) {
-    DrawTextEx(font, buf.lines[i].text.c_str(), {4.f, (float)y}, FONT_SZ, 1,
+  int y = TOPBAR_H + 6;
+  for (int i = startIdx; i < (int)buf.lines.size() && y + LINE_H <= TOPBAR_H + termH; ++i) {
+    DrawTextEx(font, buf.lines[i].text.c_str(), {6.f, (float)y}, FONT_SZ, 1,
                buf.lines[i].color);
     y += LINE_H;
   }
 
-  // Partial animation line rendered below committed lines
-  if (anim.isActive() && buf.scrollOffset == 0 && y + LINE_H <= termH) {
-    DrawTextEx(font, anim.currentPartial().c_str(), {4.f, (float)y}, FONT_SZ, 1,
+  if (anim.isActive() && buf.scrollOffset == 0 && y + LINE_H <= TOPBAR_H + termH) {
+    DrawTextEx(font, anim.currentPartial().c_str(), {6.f, (float)y}, FONT_SZ, 1,
                anim.currentColor());
   }
 }
@@ -228,443 +415,616 @@ static void drawTerminal(const TerminalBuffer &buf, const AnimationQueue &anim,
 // ============================================================
 // RENDERING — INPUT LINE
 // ============================================================
-static void drawInputLine(const InputState &st, Font font, int screenW,
-                          int screenH) {
+static void drawInputLine(const InputState &st, Font font, int screenW, int screenH) {
   int y = screenH - HUD_H - INPUT_H;
-  DrawLine(0, y, screenW, y, C_DIM_LINE);
+  DrawLine(0, y, screenW - SIDEBAR_W, y, C_DIM_LINE);
 
-  const char *promptStr = st.mode == InputMode::Command ? "[PROTOCOL]> "
-                          : st.mode == InputMode::LimbSelect
-                              ? "TARGET LIMB: "
-                              : "DAMAGE LEVEL [1-3]: ";
+  const char *promptStr = st.mode == InputMode::Command        ? "PROTOCOL:~$ "
+                          : st.mode == InputMode::LimbSelect   ? "TARGET LIMB: "
+                                                               : "DAMAGE LEVEL [1-3]: ";
 
   std::string display = promptStr + st.current;
-  if (st.cursorVis)
-    display += '_';
-  DrawTextEx(font, display.c_str(), {4.f, (float)(y + 4)}, FONT_SZ, 1, C_DIM);
+  if (st.cursorVis) display += '_';
+  DrawTextEx(font, display.c_str(), {6.f, (float)(y + 4)}, FONT_SZ, 1, C_AMBER_DIM);
 }
 
 // ============================================================
 // RENDERING — HUD BAR
 // ============================================================
-// HUD_H must be >= 4 + 2 * LINE_H (currently 44); kept at 60 for breathing
-// room.
 static void drawHUD(const Player &player, Font font, int screenW, int screenH) {
   int y = screenH - HUD_H;
   DrawRectangle(0, y, screenW, HUD_H, C_HUD_BG);
-  DrawLine(0, y, screenW, y, C_LIME);
+  DrawLine(0, y, screenW, y, C_AMBER);
 
-  std::string row1 = std::format(
-      "OVERALL:{:>4}  HEAD:{:>3}  TORSO:{:>3}  "
-      "L.ARM:{:>3}  R.ARM:{:>3}  L.LEG:{:>3}  R.LEG:{:>3}",
-      player.m_overallHealth, player.m_head, player.m_torso, player.m_leftArm,
-      player.m_rightArm, player.m_leftLeg, player.m_rightLeg);
+  const int BAR_H  = 8;
+  const int ROW_H  = 19;
+  const int PAD    = 5;
+  const int LBLW   = 52;
 
-  std::string row2 =
-      std::format("ENERGY:{:>5.1f}  HYDRATION:{:>5.1f}  RADIATION:{:>3}",
-                  player.m_energy, player.m_hydration, player.m_radiation);
+  int leftW = (int)(screenW * 0.72f);
 
-  DrawTextEx(font, row1.c_str(), {4.f, (float)(y + 4)}, FONT_SZ, 1, C_LIME);
-  DrawTextEx(font, row2.c_str(), {4.f, (float)(y + 4 + LINE_H)}, FONT_SZ, 1,
-             C_LIME);
+  auto barColor = [](float frac) -> Color {
+    if (frac > 0.7f) return C_GREEN;
+    if (frac > 0.4f) return C_AMBER;
+    if (frac > 0.2f) return C_ORANGE;
+    return pulseRed();
+  };
+
+  // ── Row 1: HEAD TORSO L.ARM R.ARM ────────────────────────
+  struct LB { const char *lbl; float val; float maxV; };
+  LB row1[4] = {
+      {"HEAD",  (float)player.m_head,        40.f},
+      {"TORSO", (float)player.m_torso,       60.f},
+      {"L.ARM", (float)player.m_leftArm,     75.f},
+      {"R.ARM", (float)player.m_rightArm,    75.f},
+  };
+  int r1y   = y + PAD;
+  int cellW = leftW / 4;
+  int barW  = cellW - LBLW - PAD;
+  for (int i = 0; i < 4; ++i) {
+    int   cx   = i * cellW + PAD;
+    float frac = std::clamp(row1[i].val / row1[i].maxV, 0.f, 1.f);
+    Color col  = barColor(frac);
+    DrawTextEx(font, row1[i].lbl, {(float)cx, (float)r1y}, FONT_SZ - 2, 1, C_AMBER_DIM);
+    DrawRectangle(cx + LBLW, r1y + 2, barW, BAR_H, {col.r, col.g, col.b, 28});
+    int fw = (int)(barW * frac);
+    if (fw > 0) {
+      DrawRectangle(cx + LBLW, r1y + 2, fw, BAR_H, col);
+      DrawRectangle(cx + LBLW, r1y + 2, fw, 1, {255, 255, 255, 50});
+    }
+  }
+
+  // ── Row 2: L.LEG R.LEG OVERALL ───────────────────────────
+  LB row2[3] = {
+      {"L.LEG",   (float)player.m_leftLeg,       75.f},
+      {"R.LEG",   (float)player.m_rightLeg,       75.f},
+      {"OVERALL", (float)player.m_overallHealth, 400.f},
+  };
+  int r2y    = r1y + ROW_H;
+  int cellW2 = leftW / 3;
+  int barW2  = cellW2 - LBLW - PAD;
+  for (int i = 0; i < 3; ++i) {
+    int   cx   = i * cellW2 + PAD;
+    float frac = std::clamp(row2[i].val / row2[i].maxV, 0.f, 1.f);
+    Color col  = barColor(frac);
+    DrawTextEx(font, row2[i].lbl, {(float)cx, (float)r2y}, FONT_SZ - 2, 1, C_AMBER_DIM);
+    DrawRectangle(cx + LBLW, r2y + 2, barW2, BAR_H, {col.r, col.g, col.b, 28});
+    int fw = (int)(barW2 * frac);
+    if (fw > 0) {
+      DrawRectangle(cx + LBLW, r2y + 2, fw, BAR_H, col);
+      DrawRectangle(cx + LBLW, r2y + 2, fw, 1, {255, 255, 255, 50});
+    }
+  }
+
+  // ── Right panel: NRG / HYD / RAD ─────────────────────────
+  int rightX = leftW + 10;
+  int statW  = screenW - rightX - PAD;
+  DrawLine(leftW + 4, y + 4, leftW + 4, y + HUD_H - 4,
+           {C_AMBER.r, C_AMBER.g, C_AMBER.b, 60});
+
+  struct SB { const char *lbl; float val; float maxV; bool inv; };
+  SB stats[3] = {
+      {"NRG", player.m_energy,           100.f, false},
+      {"HYD", player.m_hydration,        100.f, false},
+      {"RAD", (float)player.m_radiation, 100.f, true },
+  };
+  const int SLBLW   = 28;
+  int statRowH = (HUD_H - PAD * 2) / 3;
+  for (int i = 0; i < 3; ++i) {
+    int   sy   = y + PAD + i * statRowH;
+    float frac = std::clamp(stats[i].val / stats[i].maxV, 0.f, 1.f);
+    Color col  = stats[i].inv
+                   ? (frac > 0.6f ? C_RED : frac > 0.3f ? C_ORANGE : C_GREEN)
+                   : barColor(frac);
+    DrawTextEx(font, stats[i].lbl, {(float)rightX, (float)sy}, FONT_SZ - 2, 1, C_AMBER_DIM);
+    int bw = statW - SLBLW - 2;
+    int bx = rightX + SLBLW + 2;
+    DrawRectangle(bx, sy + 2, bw, BAR_H, {col.r, col.g, col.b, 28});
+    int fw = (int)(bw * frac);
+    if (fw > 0) {
+      DrawRectangle(bx, sy + 2, fw, BAR_H, col);
+      DrawRectangle(bx, sy + 2, fw, 1, {255, 255, 255, 50});
+    }
+  }
+}
+
+// ============================================================
+// RENDERING — BOOT SCREEN
+// ============================================================
+static void drawBoot(const BootState &boot, Font font, int screenW, int screenH) {
+  int x = 40;
+  int y = 60;
+  for (int i = 0; i < (int)boot.lines.size(); ++i) {
+    if (!boot.visible[i]) break;
+    DrawTextEx(font, boot.lines[i].text.c_str(), {(float)x, (float)y}, FONT_SZ, 1,
+               boot.lines[i].color);
+    y += LINE_H + 2;
+  }
 }
 
 // ============================================================
 // TERMINAL CONTENT HELPERS
 // ============================================================
-static void pushMainMenu(TerminalBuffer &buf) {
-    std::string ver    = PROJECT_VERSION;
-    int         padCnt = std::max(0, 46 - 38 - (int)ver.size());
-    std::string tagPad(padCnt, ' ');
-
-    buf.push("╔══════════════════════════════════════════════╗");
-    buf.push("║                                              ║");
-    buf.push("║  |¯\\ |¯\\ /¯\\ ¯|¯ /¯\\ /¯  /¯\\ |             ║");
-    buf.push("║  |_/ |-/ | |  |  | | |   | | |             ║");
-    buf.push("║  |   |_\\ \\_/  |  \\_/ \\__ \\_/ |__           ║");
-    buf.push("║                                              ║");
-    buf.push("╠══════════════════════════════════════════════╣");
-    buf.push("║  AUTONOMOUS SURVIVAL INTERFACE  //  v" + ver + tagPad + "║");
-    buf.push("╠══════════════════════════════════════════════╣");
-    buf.push("║                                              ║");
-    buf.push("║    [1]  NEW SESSION                          ║");
-    buf.push("║    [2]  RESTORE SESSION                      ║");
-    buf.push("║    [3]  TERMINATE                            ║");
-    buf.push("║                                              ║");
-    buf.push("╚══════════════════════════════════════════════╝");
-    buf.push("");
-}
-
 static void pushCommandMenu(TerminalBuffer &buf) {
-  buf.push("");
-  buf.push("╔══════════════════════════════════════════════╗");
-  buf.push("║  PROTOCOL OS // COMMAND INTERFACE v0.1       ║");
-  buf.push("╠══════════════════════════════════════════════╣");
-  buf.push("║  SYS_HEAL    » Initiate bio-reconstruction   ║");
-  buf.push("║  SYS_DECON   » Suppress radiation            ║");
-  buf.push("║  INT_CHARGE  » Restore energy reserves       ║");
-  buf.push("║  INT_COOLANT » Restore hydration             ║");
-  buf.push("║  DAMAGE      » Apply damage to limb          ║");
-  buf.push("║  CURRENT     » Display biometric feed        ║");
-  buf.push("║  SHW_STATS   » Display survival metrics      ║");
-  buf.push("║  SHW_INV     » Display inventory manifest    ║");
-  buf.push("║  SYS_SAVE    » Save current session          ║");
-  buf.push("║  SYS_LOAD    » Restore saved session         ║");
-  buf.push("║  SYS_HELP    » Reprint this menu             ║");
-  buf.push("║  EXIT        » Terminate session             ║");
-  buf.push("╚══════════════════════════════════════════════╝");
+  buf.push("-- COMMANDS ----------------------------------------", C_AMBER_DIM);
+  buf.push("  SYS_HEAL    » Initiate bio-reconstruction");
+  buf.push("  SYS_DECON   » Suppress radiation");
+  buf.push("  INT_CHARGE  » Restore energy reserves");
+  buf.push("  INT_COOLANT » Restore hydration");
+  buf.push("  DAMAGE      » Apply damage to limb");
+  buf.push("  CURRENT     » Display biometric feed");
+  buf.push("  SHW_STATS   » Display survival metrics");
+  buf.push("  SHW_INV     » Display inventory manifest");
+  buf.push("  SYS_SAVE    » Save current session");
+  buf.push("  SYS_LOAD    » Restore saved session");
+  buf.push("  SYS_HELP    » Reprint this menu");
+  buf.push("  EXIT        » Terminate session");
+  buf.push("---------------------------------------------------", C_AMBER_DIM);
   buf.push("");
 }
 
 static void pushIntro(AnimationQueue &anim) {
-  anim.typeText(std::string("PROTOCOL OS [Version ") + PROJECT_VERSION +
-                "]...\n");
-  anim.typeText("Initializing biometric link...\n");
+  anim.typeText(std::string("PROTOCOL OS [") + PROJECT_VERSION + "] - BIOMETRIC LINK ACTIVE\n",
+                C_AMBER_BRT);
   anim.typeText("Limb status: NOMINAL.\n");
-  anim.typeText("Ready for input.\n\n");
+  anim.typeText("Inventory loaded. Ready for input.\n\n");
 }
 
 // ============================================================
 // COMMAND DISPATCHER
 // ============================================================
-static void handleCommand(const std::string& input, GameState& state,
-                          TerminalBuffer& buf, AnimationQueue& anim,
-                          InputState& inputSt, AppState& appState) {
-    Player& player = state.player;
+static void handleCommand(const std::string &input, GameState &state,
+                          TerminalBuffer &buf, AnimationQueue &anim,
+                          InputState &inputSt, AppState &appState) {
+  Player &player = state.player;
 
-    // ── Main menu ──────────────────────────────────────────
-    if (appState == AppState::MainMenu) {
-        if (input == "1") {
-            for (const char* name : {"Med-Kit", "Diazine (Grade B)",
-                                     "Adreno-Spike 0.5mg",
-                                     "Recycled Biometric Coolant"}) {
-                if (auto def = findItemDef(name))
-                    player.m_inventory.addItem(*def);
-            }
-            appState = AppState::Playing;
-            pushIntro(anim);
-            pushCommandMenu(buf);
-        } else if (input == "2") {
-            if (state.load("save.txt")) {
-                appState = AppState::Playing;
-                anim.typeText("SAVE RESTORED. RESUMING SESSION...\n\n");
-                pushCommandMenu(buf);
-            } else {
-                buf.push("NO SAVE FILE FOUND.");
-            }
-        } else if (input == "3") {
-            CloseWindow();
-        } else {
-            buf.push("ENTER 1, 2, OR 3.");
-        }
-        return;
-    }
-
-    // ── Playing commands ───────────────────────────────────
-    if (input == "SYS_HEAL") {
-        if (!player.m_inventory.findItem(ItemEffect::healLimb)) {
-            buf.push("NO HEALING ITEMS IN INVENTORY.");
-            return;
-        }
-        inputSt.mode       = InputMode::LimbSelect;
-        inputSt.pendingCmd = "SYS_HEAL";
-
-    } else if (input == "SYS_DECON") {
-        const Item* item = player.m_inventory.findItem(ItemEffect::reduceRadiation);
-        if (!item) { buf.push("NO DECONTAMINATION ITEMS."); return; }
-        std::string msg  = item->useMessage;
-        std::string name = item->name;
-        player.applyItem(*item);
-        player.m_inventory.removeItem(name);
-        anim.typeText(msg + "\n");
-
-    } else if (input == "INT_CHARGE") {
-        const Item* item = player.m_inventory.findItem(ItemEffect::restoreEnergy);
-        if (!item) { buf.push("NO ENERGY ITEMS."); return; }
-        std::string msg  = item->useMessage;
-        std::string name = item->name;
-        player.applyItem(*item);
-        player.m_inventory.removeItem(name);
-        anim.typeText(msg + "\n");
-
-    } else if (input == "INT_COOLANT") {
-        const Item* item = player.m_inventory.findItem(ItemEffect::restoreHydration);
-        if (!item) { buf.push("NO HYDRATION ITEMS."); return; }
-        std::string msg  = item->useMessage;
-        std::string name = item->name;
-        player.applyItem(*item);
-        player.m_inventory.removeItem(name);
-        anim.typeText(msg + "\n");
-
-    } else if (input == "SHW_INV") {
-        if (player.m_inventory.isEmpty()) {
-            buf.push("INVENTORY: EMPTY.");
-        } else {
-            for (int i = 0; i < player.m_inventory.size(); ++i) {
-                Item it    = player.m_inventory.getItem(i);
-                int  count = player.m_inventory.getCount(i);
-                buf.push(std::format("[{}] {} x{} — {}", i + 1,
-                                     it.name, count, it.description));
-            }
-        }
-
-    } else if (input == "DAMAGE") {
-        inputSt.mode       = InputMode::LimbSelect;
-        inputSt.pendingCmd = "DAMAGE";
-
-    } else if (input == "CURRENT") {
-        buf.push("╔══════ BIOMETRIC FEED ══════╗");
-        buf.push(std::format("║  {:<9}: {:<15}║", "OVERALL", player.getTotalHealth()));
-        buf.push("╠════════════════════════════╣");
-        buf.push(std::format("║  {:<9}: {:<15}║", "HEAD",      player.m_head));
-        buf.push(std::format("║  {:<9}: {:<15}║", "TORSO",     player.m_torso));
-        buf.push(std::format("║  {:<9}: {:<15}║", "LEFT ARM",  player.m_leftArm));
-        buf.push(std::format("║  {:<9}: {:<15}║", "RIGHT ARM", player.m_rightArm));
-        buf.push(std::format("║  {:<9}: {:<15}║", "LEFT LEG",  player.m_leftLeg));
-        buf.push(std::format("║  {:<9}: {:<15}║", "RIGHT LEG", player.m_rightLeg));
-        buf.push("╚════════════════════════════╝");
-
-    } else if (input == "SHW_STATS") {
-        buf.push(std::format("Radiation: {}", player.m_radiation));
-        buf.push(std::format("Energy: {:.1f}", player.m_energy));
-        buf.push(std::format("Hydration: {:.1f}", player.m_hydration));
-
-    } else if (input == "SYS_SAVE") {
-        state.save("save.txt");
-        anim.typeText("SAVE COMPLETE.\n");
-
-    } else if (input == "SYS_LOAD") {
-        if (state.load("save.txt")) anim.typeText("SAVE RESTORED.\n");
-        else buf.push("NO SAVE FILE FOUND.");
-
-    } else if (input == "SYS_HELP") {
+  if (appState == AppState::MainMenu) {
+    if (input == "1") {
+      for (const char *name : {"Med-Kit", "Diazine (Grade B)",
+                               "Adreno-Spike 0.5mg",
+                               "Recycled Biometric Coolant"}) {
+        if (auto def = findItemDef(name))
+          player.m_inventory.addItem(*def);
+      }
+      appState = AppState::Playing;
+      pushIntro(anim);
+      pushCommandMenu(buf);
+    } else if (input == "2") {
+      if (state.load("save.txt")) {
+        appState = AppState::Playing;
+        anim.typeText("SAVE RESTORED. RESUMING SESSION...\n\n", C_AMBER_BRT);
         pushCommandMenu(buf);
-
-    } else if (input == "KILL") {
-        player.m_head = 0;
-
-    } else if (input == "EXIT") {
-        buf.push("TERMINATING SESSION...");
-        CloseWindow();
-
+      } else {
+        buf.push("NO SAVE FILE FOUND.", C_RED);
+      }
+    } else if (input == "3") {
+      CloseWindow();
     } else {
-        buf.push("UNRECOGNIZED COMMAND. TYPE SYS_HELP FOR COMMAND LIST.");
+      buf.push("ENTER 1, 2, OR 3.", C_AMBER_DIM);
     }
+    return;
+  }
+
+  if (input == "SYS_HEAL") {
+    if (!player.m_inventory.findItem(ItemEffect::healLimb)) {
+      buf.push("NO HEALING ITEMS IN INVENTORY.", C_RED);
+      return;
+    }
+    inputSt.mode       = InputMode::LimbSelect;
+    inputSt.pendingCmd = "SYS_HEAL";
+
+  } else if (input == "SYS_DECON") {
+    const Item *item = player.m_inventory.findItem(ItemEffect::reduceRadiation);
+    if (!item) { buf.push("NO DECONTAMINATION ITEMS.", C_RED); return; }
+    std::string msg  = item->useMessage;
+    std::string name = item->name;
+    player.applyItem(*item);
+    player.m_inventory.removeItem(name);
+    anim.typeText(msg + "\n", C_GREEN);
+
+  } else if (input == "INT_CHARGE") {
+    const Item *item = player.m_inventory.findItem(ItemEffect::restoreEnergy);
+    if (!item) { buf.push("NO ENERGY ITEMS.", C_RED); return; }
+    std::string msg  = item->useMessage;
+    std::string name = item->name;
+    player.applyItem(*item);
+    player.m_inventory.removeItem(name);
+    anim.typeText(msg + "\n", C_YELLOW);
+
+  } else if (input == "INT_COOLANT") {
+    const Item *item = player.m_inventory.findItem(ItemEffect::restoreHydration);
+    if (!item) { buf.push("NO HYDRATION ITEMS.", C_RED); return; }
+    std::string msg  = item->useMessage;
+    std::string name = item->name;
+    player.applyItem(*item);
+    player.m_inventory.removeItem(name);
+    anim.typeText(msg + "\n", C_CYAN);
+
+  } else if (input == "SHW_INV") {
+    if (player.m_inventory.isEmpty()) {
+      buf.push("INVENTORY: EMPTY.", C_AMBER_DIM);
+    } else {
+      buf.push("-- INVENTORY MANIFEST ------------------------------", C_AMBER_DIM);
+      for (int i = 0; i < player.m_inventory.size(); ++i) {
+        Item it    = player.m_inventory.getItem(i);
+        int  count = player.m_inventory.getCount(i);
+        buf.push(std::format("  [{}] {} x{} - {}", i + 1, it.name, count, it.description));
+      }
+    }
+
+  } else if (input == "DAMAGE") {
+    inputSt.mode       = InputMode::LimbSelect;
+    inputSt.pendingCmd = "DAMAGE";
+
+  } else if (input == "CURRENT") {
+    auto lc = [](int v, int mx) -> Color {
+      float f = (float)v / mx;
+      return f > 0.7f ? C_GREEN : f > 0.4f ? C_AMBER : f > 0.2f ? C_ORANGE : C_RED;
+    };
+    buf.push("-- BIOMETRIC FEED ----------------------------------", C_AMBER_DIM);
+    buf.push(std::format("  OVERALL  {:>5} / 400", player.getTotalHealth()));
+    buf.push(std::format("  HEAD     {:>5} / 40",  player.m_head),   lc(player.m_head,     40));
+    buf.push(std::format("  TORSO    {:>5} / 60",  player.m_torso),  lc(player.m_torso,    60));
+    buf.push(std::format("  L.ARM    {:>5} / 75",  player.m_leftArm),  lc(player.m_leftArm,  75));
+    buf.push(std::format("  R.ARM    {:>5} / 75",  player.m_rightArm), lc(player.m_rightArm, 75));
+    buf.push(std::format("  L.LEG    {:>5} / 75",  player.m_leftLeg),  lc(player.m_leftLeg,  75));
+    buf.push(std::format("  R.LEG    {:>5} / 75",  player.m_rightLeg), lc(player.m_rightLeg, 75));
+
+  } else if (input == "SHW_STATS") {
+    buf.push("-- SURVIVAL METRICS --------------------------------", C_AMBER_DIM);
+    buf.push(std::format("  Radiation  : {}", player.m_radiation),
+             player.m_radiation > 60 ? C_RED : player.m_radiation > 30 ? C_ORANGE : C_GREEN);
+    buf.push(std::format("  Energy     : {:.1f}", player.m_energy),
+             player.m_energy < 30.f ? C_RED : player.m_energy < 60.f ? C_AMBER : C_GREEN);
+    buf.push(std::format("  Hydration  : {:.1f}", player.m_hydration),
+             player.m_hydration < 30.f ? C_RED : player.m_hydration < 60.f ? C_AMBER : C_CYAN);
+
+  } else if (input == "SYS_SAVE") {
+    state.save("save.txt");
+    anim.typeText("SAVE COMPLETE. SESSION PRESERVED.\n", C_AMBER_BRT);
+
+  } else if (input == "SYS_LOAD") {
+    if (state.load("save.txt")) anim.typeText("SAVE RESTORED.\n", C_AMBER_BRT);
+    else buf.push("NO SAVE FILE FOUND.", C_RED);
+
+  } else if (input == "SYS_HELP") {
+    pushCommandMenu(buf);
+
+  } else if (input == "KILL") {
+    player.m_head = 0;
+
+  } else if (input == "EXIT") {
+    buf.push("TERMINATING SESSION...", C_AMBER_DIM);
+    CloseWindow();
+
+  } else {
+    buf.push("UNRECOGNIZED COMMAND. TYPE SYS_HELP FOR COMMAND LIST.", C_AMBER_DIM);
+  }
 }
 
 // ============================================================
-// SUB-PROMPT HANDLER  (limb select + damage level)
+// SUB-PROMPT HANDLER
 // ============================================================
-static void handleSubPrompt(const std::string& input, GameState& state,
-                            TerminalBuffer& buf, AnimationQueue& anim,
-                            InputState& inputSt) {
-    Player& player = state.player;
+static void handleSubPrompt(const std::string &input, GameState &state,
+                            TerminalBuffer &buf, AnimationQueue &anim,
+                            InputState &inputSt) {
+  Player &player = state.player;
 
-    if (inputSt.mode == InputMode::LimbSelect) {
-        BodyPart part = player.stringToBodyPart(input);
+  if (inputSt.mode == InputMode::LimbSelect) {
+    BodyPart part = player.stringToBodyPart(input);
 
-        if (inputSt.pendingCmd == "SYS_HEAL") {
-            if (part == BodyPart::None) {
-                buf.push("INVALID LIMB.");
-            } else {
-                const Item* item = player.m_inventory.findItem(ItemEffect::healLimb);
-                if (item) {
-                    std::string name = item->name;
-                    player.applyItem(*item, part);
-                    player.m_inventory.removeItem(name);
-                }
-            }
-            inputSt.mode = InputMode::Command;
-            inputSt.pendingCmd.clear();
-
-        } else if (inputSt.pendingCmd == "DAMAGE") {
-            if (part == BodyPart::None) {
-                buf.push("INVALID LIMB.");
-                inputSt.mode = InputMode::Command;
-                inputSt.pendingCmd.clear();
-            } else {
-                inputSt.pendingLimb = input;
-                inputSt.mode = InputMode::DamageLevel;
-            }
+    if (inputSt.pendingCmd == "SYS_HEAL") {
+      if (part == BodyPart::None) {
+        buf.push("INVALID LIMB.", C_RED);
+      } else {
+        const Item *item = player.m_inventory.findItem(ItemEffect::healLimb);
+        if (item) {
+          std::string name = item->name;
+          player.applyItem(*item, part);
+          player.m_inventory.removeItem(name);
         }
+      }
+      inputSt.mode = InputMode::Command;
+      inputSt.pendingCmd.clear();
 
-    } else if (inputSt.mode == InputMode::DamageLevel) {
-        int level = 0;
-        try { level = std::stoi(input); } catch (...) {}
-
-        if (level < 1 || level > 3) {
-            buf.push("INVALID DAMAGE LEVEL.");
-        } else {
-            BodyPart part = player.stringToBodyPart(inputSt.pendingLimb);
-            player.damagePlayer(part, level);
-            buf.push(std::format("DAMAGE APPLIED TO {}.", inputSt.pendingLimb));
-        }
+    } else if (inputSt.pendingCmd == "DAMAGE") {
+      if (part == BodyPart::None) {
+        buf.push("INVALID LIMB.", C_RED);
         inputSt.mode = InputMode::Command;
         inputSt.pendingCmd.clear();
-        inputSt.pendingLimb.clear();
+      } else {
+        inputSt.pendingLimb = input;
+        inputSt.mode = InputMode::DamageLevel;
+      }
     }
+
+  } else if (inputSt.mode == InputMode::DamageLevel) {
+    int level = 0;
+    try { level = std::stoi(input); } catch (...) {}
+
+    if (level < 1 || level > 3) {
+      buf.push("INVALID DAMAGE LEVEL.", C_RED);
+    } else {
+      BodyPart part = player.stringToBodyPart(inputSt.pendingLimb);
+      player.damagePlayer(part, level);
+      buf.push(std::format("DAMAGE APPLIED TO {}.", inputSt.pendingLimb), C_ORANGE);
+    }
+    inputSt.mode = InputMode::Command;
+    inputSt.pendingCmd.clear();
+    inputSt.pendingLimb.clear();
+  }
+}
+
+// ============================================================
+// RENDERING — MAIN MENU OVERLAY
+// ============================================================
+static void drawMainMenu(Font font, int screenW, int screenH,
+                         const InputState &inputSt) {
+  const int panelW = 540;
+  const int panelH = 300;
+  int px = (screenW - panelW) / 2;
+  int py = (screenH - panelH) / 2;
+
+  // Glow halo + panel
+  DrawRectangle(px - 3, py - 3, panelW + 6, panelH + 6,
+                {C_AMBER.r, C_AMBER.g, C_AMBER.b, 16});
+  DrawRectangle(px, py, panelW, panelH, {10, 8, 0, 252});
+  DrawRectangleLines(px, py, panelW, panelH, C_AMBER);
+  DrawRectangleLines(px + 2, py + 2, panelW - 4, panelH - 4,
+                     {C_AMBER.r, C_AMBER.g, C_AMBER.b, 40});
+
+  int cy = py + 16;
+
+  const char *logo3[3] = {
+      "|\\  /\\ |¯\\ /¯\\ ¯|¯ /¯\\ /¯  /¯\\ |",
+      "|_\\/ | |_/ | |  |  | | |   | | |",
+      "|    | |   \\_/  |  \\_/ \\__ \\_/ |__",
+  };
+  for (int i = 0; i < 3; ++i) {
+    Vector2 sz = MeasureTextEx(font, logo3[i], FONT_SZ, 1);
+    DrawTextEx(font, logo3[i],
+               {px + (panelW - sz.x) * 0.5f, (float)cy},
+               FONT_SZ, 1, C_AMBER_BRT);
+    cy += LINE_H;
+  }
+  cy += 6;
+
+  // Separator + tagline
+  DrawLine(px + 14, cy, px + panelW - 14, cy, C_DIM_LINE);
+  cy += 8;
+  std::string tag = std::string("AUTONOMOUS SURVIVAL INTERFACE  //  v") + PROJECT_VERSION;
+  Vector2 tsz = MeasureTextEx(font, tag.c_str(), FONT_SZ - 2, 1);
+  DrawTextEx(font, tag.c_str(),
+             {px + (panelW - tsz.x) * 0.5f, (float)cy},
+             FONT_SZ - 2, 1, C_AMBER_DIM);
+  cy += LINE_H + 10;
+
+  // Menu items
+  const char *items[3] = {"[1]  NEW SESSION", "[2]  RESTORE SESSION", "[3]  TERMINATE"};
+  const int   itemH = 32;
+  const int   itemW = panelW - 60;
+  const int   itemX = px + 30;
+
+  for (int i = 0; i < 3; ++i) {
+    DrawRectangle(itemX, cy, itemW, itemH, {10, 8, 0, 255});
+    DrawRectangleLines(itemX, cy, itemW, itemH,
+                       {C_AMBER_DIM.r, C_AMBER_DIM.g, C_AMBER_DIM.b, 110});
+
+    Vector2 isz = MeasureTextEx(font, items[i], FONT_SZ, 1);
+    DrawTextEx(font, items[i],
+               {itemX + (itemW - isz.x) * 0.5f, (float)(cy + (itemH - FONT_SZ) / 2)},
+               FONT_SZ, 1, C_AMBER_DIM);
+
+    cy += itemH + 6;
+  }
+
+  // Navigation hint
+  cy += 4;
+  const char *hint = "\x18 \x19  NAVIGATE      ENTER  SELECT";
+  Vector2 hsz = MeasureTextEx(font, hint, FONT_SZ - 2, 1);
+  DrawTextEx(font, hint, {px + (panelW - hsz.x) * 0.5f, (float)cy},
+             FONT_SZ - 2, 1, {C_AMBER_DIM.r, C_AMBER_DIM.g, C_AMBER_DIM.b, 150});
+
+  // Input prompt pinned near bottom of panel
+  int inputY = py + panelH - LINE_H - 10;
+  DrawLine(px + 14, inputY - 6, px + panelW - 14, inputY - 6, C_DIM_LINE);
+  std::string inp = std::string("PROTOCOL:~$ ") + inputSt.current +
+                    (inputSt.cursorVis ? "_" : " ");
+  Vector2 isz2 = MeasureTextEx(font, inp.c_str(), FONT_SZ, 1);
+  DrawTextEx(font, inp.c_str(),
+             {px + (panelW - isz2.x) * 0.5f, (float)inputY},
+             FONT_SZ, 1, C_AMBER_DIM);
 }
 
 // ============================================================
 // MAIN
 // ============================================================
 int main() {
-    srand(static_cast<unsigned>(time(nullptr)));
+  srand(static_cast<unsigned>(time(nullptr)));
 
-    SetConfigFlags(FLAG_WINDOW_RESIZABLE);
-    InitWindow(DEFAULT_W, DEFAULT_H, "PROTOCOL OS");
-    SetTargetFPS(60);
+  SetConfigFlags(FLAG_WINDOW_RESIZABLE);
+  InitWindow(DEFAULT_W, DEFAULT_H, "PROTOCOL OS");
+  HideCursor();
+  SetTargetFPS(60);
 
-    // Load font — falls back to raylib default (size 20) if file missing
-    Font font = LoadFontEx("assets/fonts/ShareTechMono-Regular.ttf",
-                           FONT_SZ, nullptr, 0);
-    if (font.texture.id == 0)
-        font = GetFontDefault();
+  // Load font with explicit codepoints so extended chars render correctly.
+  // Covers standard printable ASCII plus the two non-ASCII chars used in UI strings.
+  int codepoints[97];
+  int cpCount = 0;
+  for (int i = 32; i < 127; ++i) codepoints[cpCount++] = i; // ASCII 32-126
+  codepoints[cpCount++] = 0x00BB; // » RIGHT-POINTING DOUBLE ANGLE QUOTATION MARK
+  codepoints[cpCount++] = 0x00AF; // ¯ MACRON (used in ASCII logo)
 
-    GameState      gameState;
-    AppState       appState   = AppState::MainMenu;
-    TerminalBuffer tbuf;
-    AnimationQueue anim;
-    anim.buf = &tbuf;
-    InputState     inputSt;
-    float          decayTimer    = 0.f;
-    int            lastWarnLevel = 3;  // 3=fine 2=≤200 1=≤100 0=≤40
+  Font font = LoadFontEx("assets/fonts/ShareTechMono-Regular.ttf", FONT_SZ,
+                         codepoints, cpCount);
+  if (font.texture.id == 0)
+    font = GetFontDefault();
 
-    // Set global renderer context for playHealingAnimation
-    g_tbuf = &tbuf;
-    g_anim = &anim;
+  GameState      gameState;
+  AppState       appState    = AppState::Boot;
+  TerminalBuffer tbuf;
+  AnimationQueue anim;
+  anim.buf = &tbuf;
+  InputState     inputSt;
+  BootState      boot;
+  boot.init();
+  ActionFlash    flash;
+  float          decayTimer    = 0.f;
+  int            lastWarnLevel = 3;
 
-    pushMainMenu(tbuf);
+  g_tbuf = &tbuf;
+  g_anim = &anim;
 
-    while (!WindowShouldClose()) {
-        const float dt = GetFrameTime();
-        const int   W  = GetScreenWidth();
-        const int   H  = GetScreenHeight();
+  while (!WindowShouldClose()) {
+    const float dt = GetFrameTime();
+    const int   W  = GetScreenWidth();
+    const int   H  = GetScreenHeight();
 
-        // ── Mouse wheel scroll ─────────────────────────
-        float wheel = GetMouseWheelMove();
-        if (wheel > 0.f) tbuf.scrollUp(3);
-        if (wheel < 0.f) tbuf.scrollDown(3);
-
-        // ── Cursor blink ───────────────────────────────
-        inputSt.cursorTimer += dt;
-        if (inputSt.cursorTimer >= CURSOR_BLINK) {
-            inputSt.cursorTimer = 0.f;
-            inputSt.cursorVis   = !inputSt.cursorVis;
-        }
-
-        // ── Keyboard input (blocked during animations) ─
-        if (!anim.isActive()) {
-            int ch;
-            while ((ch = GetCharPressed()) > 0)
-                if (ch >= 32 && ch < 127)
-                    inputSt.current += static_cast<char>(ch);
-
-            if (IsKeyPressed(KEY_BACKSPACE) && !inputSt.current.empty())
-                inputSt.current.pop_back();
-
-            if (IsKeyPressed(KEY_UP) && !inputSt.history.empty()) {
-                inputSt.historyIdx = std::min(inputSt.historyIdx + 1,
-                                              (int)inputSt.history.size() - 1);
-                inputSt.current = inputSt.history[inputSt.historyIdx];
-            }
-            if (IsKeyPressed(KEY_DOWN)) {
-                if (inputSt.historyIdx > 0) {
-                    --inputSt.historyIdx;
-                    inputSt.current = inputSt.history[inputSt.historyIdx];
-                } else {
-                    inputSt.historyIdx = -1;
-                    inputSt.current.clear();
-                }
-            }
-
-            if (IsKeyPressed(KEY_ENTER) && !inputSt.current.empty()) {
-                std::string submitted = inputSt.current;
-                inputSt.current.clear();
-                inputSt.historyIdx = -1;
-
-                // Add to history
-                inputSt.history.insert(inputSt.history.begin(), submitted);
-                if ((int)inputSt.history.size() > MAX_HISTORY)
-                    inputSt.history.pop_back();
-
-                // Upper-case for command matching
-                std::string upper = submitted;
-                std::transform(upper.begin(), upper.end(), upper.begin(),
-                               [](unsigned char c) { return std::toupper(c); });
-
-                // Echo input in dim colour
-                const char* echo_prompt =
-                    inputSt.mode == InputMode::Command     ? "[PROTOCOL]> "        :
-                    inputSt.mode == InputMode::LimbSelect  ? "TARGET LIMB: "       :
-                                                             "DAMAGE LEVEL [1-3]: ";
-                tbuf.push(std::string(echo_prompt) + upper, C_DIM);
-
-                if (inputSt.mode == InputMode::Command)
-                    handleCommand(upper, gameState, tbuf, anim, inputSt, appState);
-                else
-                    handleSubPrompt(upper, gameState, tbuf, anim, inputSt);
-            }
-        }
-
-        // ── Advance animations ─────────────────────────
-        anim.advance(dt);
-
-        // ── Game ticks (only while Playing) ───────────
-        if (appState == AppState::Playing) {
-            // Stat decay (1 point per second)
-            decayTimer += dt;
-            if (decayTimer >= DECAY_TICK) {
-                decayTimer = 0.f;
-                if (gameState.player.m_energy    > 0.f)
-                    gameState.player.m_energy    -= 1.f;
-                if (gameState.player.m_hydration > 0.f)
-                    gameState.player.m_hydration -= 1.f;
-            }
-
-            gameState.player.getTotalHealth();
-            int hp = gameState.player.m_overallHealth;
-
-            // Health warnings — only push when level changes to avoid spam
-            int newWarnLevel =
-                hp <= 40  ? 0 :
-                hp <= 100 ? 1 :
-                hp <= 200 ? 2 : 3;
-
-            if (newWarnLevel < lastWarnLevel && !anim.isActive()) {
-                lastWarnLevel = newWarnLevel;
-                if (newWarnLevel == 0) {
-                    anim.stutterText("CRITICAL_FAILURE: BIOMETRIC_RESERVES_EXHAUSTED...\n");
-                    anim.stutterText("EMERGENCY_DUMP: PHYSICAL_CONTAINMENT_BREACHED.\n");
-                } else if (newWarnLevel == 1) {
-                    tbuf.push("[***] COGNITION RUNTIME ERROR: 0x8004210F [***]", C_RED);
-                    tbuf.push("CRITICAL: SYNAPTIC LINK DESYNC DETECTED.",          C_RED);
-                } else if (newWarnLevel == 2) {
-                    tbuf.push("[!] WARNING: BIOMETRIC FEED UNSTABLE. SEEK RECONSTRUCTION.",
-                              C_AMBER);
-                }
-            }
-
-            // Death check
-            if (appState != AppState::Dead && gameState.player.isDead()) {
-                appState = AppState::Dead;
-                for (int i = 0; i < 5; ++i) tbuf.push("");
-                tbuf.push("                                [ CONNECTION LOST ]");
-                tbuf.push("                                  SIGNAL NULL");
-                for (int i = 0; i < 5; ++i) tbuf.push("");
-            }
-        }
-
-        // ── Draw ──────────────────────────────────────
-        BeginDrawing();
-            ClearBackground(BLACK);
-            drawTerminal(tbuf, anim, font, W, H);
-            drawInputLine(inputSt, font, W, H);
-            drawHUD(gameState.player, font, W, H);
-        EndDrawing();
+    // ── Boot advance ────────────────────────────────────────
+    if (appState == AppState::Boot) {
+      boot.advance(dt);
+      if (boot.done) appState = AppState::MainMenu;
     }
 
-    UnloadFont(font);
-    CloseWindow();
-    return 0;
+    // ── Mouse wheel scroll ───────────────────────────────────
+    float wheel = GetMouseWheelMove();
+    if (wheel > 0.f) tbuf.scrollUp(3);
+    if (wheel < 0.f) tbuf.scrollDown(3);
+
+    // ── Cursor blink ─────────────────────────────────────────
+    inputSt.cursorTimer += dt;
+    if (inputSt.cursorTimer >= CURSOR_BLINK) {
+      inputSt.cursorTimer = 0.f;
+      inputSt.cursorVis   = !inputSt.cursorVis;
+    }
+
+    // ── Action flash tick ─────────────────────────────────────
+    flash.advance(dt);
+
+    // ── Keyboard input (blocked during animations) ────────────
+    if (!anim.isActive() && appState != AppState::Boot) {
+      // Quick-action number shortcuts (Playing mode only)
+      if (appState == AppState::Playing && inputSt.mode == InputMode::Command) {
+        static const char *quickCmds[4] = {
+            "SYS_HEAL", "INT_CHARGE", "INT_COOLANT", "SYS_DECON"};
+        for (int i = 0; i < 4; ++i) {
+          if (IsKeyPressed(KEY_ONE + i)) {
+            flash.trigger(i);
+            tbuf.push(std::string("PROTOCOL:~$ ") + quickCmds[i], C_AMBER_DIM);
+            handleCommand(quickCmds[i], gameState, tbuf, anim, inputSt, appState);
+          }
+        }
+      }
+
+      int ch;
+      while ((ch = GetCharPressed()) > 0)
+        if (ch >= 32 && ch < 127)
+          inputSt.current += static_cast<char>(ch);
+
+      if (IsKeyPressed(KEY_BACKSPACE) && !inputSt.current.empty())
+        inputSt.current.pop_back();
+
+      if (IsKeyPressed(KEY_UP) && !inputSt.history.empty()) {
+        inputSt.historyIdx = std::min(inputSt.historyIdx + 1,
+                                      (int)inputSt.history.size() - 1);
+        inputSt.current = inputSt.history[inputSt.historyIdx];
+      }
+      if (IsKeyPressed(KEY_DOWN)) {
+        if (inputSt.historyIdx > 0) {
+          --inputSt.historyIdx;
+          inputSt.current = inputSt.history[inputSt.historyIdx];
+        } else {
+          inputSt.historyIdx = -1;
+          inputSt.current.clear();
+        }
+      }
+
+      if (IsKeyPressed(KEY_ENTER) && !inputSt.current.empty()) {
+        std::string submitted = inputSt.current;
+        inputSt.current.clear();
+        inputSt.historyIdx = -1;
+
+        inputSt.history.insert(inputSt.history.begin(), submitted);
+        if ((int)inputSt.history.size() > MAX_HISTORY)
+          inputSt.history.pop_back();
+
+        std::string upper = submitted;
+        std::transform(upper.begin(), upper.end(), upper.begin(),
+                       [](unsigned char c) { return std::toupper(c); });
+
+        const char *echo_prompt =
+            inputSt.mode == InputMode::Command     ? "PROTOCOL:~$ "
+            : inputSt.mode == InputMode::LimbSelect ? "TARGET LIMB: "
+                                                    : "DAMAGE LEVEL [1-3]: ";
+        tbuf.push(std::string(echo_prompt) + upper, C_AMBER_DIM);
+
+        if (inputSt.mode == InputMode::Command)
+          handleCommand(upper, gameState, tbuf, anim, inputSt, appState);
+        else
+          handleSubPrompt(upper, gameState, tbuf, anim, inputSt);
+      }
+    }
+
+    // ── Advance animations ────────────────────────────────────
+    anim.advance(dt);
+
+    // ── Game ticks ────────────────────────────────────────────
+    if (appState == AppState::Playing) {
+      decayTimer += dt;
+      if (decayTimer >= DECAY_TICK) {
+        decayTimer = 0.f;
+        if (gameState.player.m_energy    > 0.f) gameState.player.m_energy    -= 1.f;
+        if (gameState.player.m_hydration > 0.f) gameState.player.m_hydration -= 1.f;
+      }
+
+      gameState.player.getTotalHealth();
+      int hp = gameState.player.m_overallHealth;
+
+      int newWarnLevel = hp <= 40 ? 0 : hp <= 100 ? 1 : hp <= 200 ? 2 : 3;
+      if (newWarnLevel < lastWarnLevel && !anim.isActive()) {
+        lastWarnLevel = newWarnLevel;
+        if (newWarnLevel == 0) {
+          anim.stutterText("CRITICAL_FAILURE: BIOMETRIC_RESERVES_EXHAUSTED...\n");
+          anim.stutterText("EMERGENCY_DUMP: PHYSICAL_CONTAINMENT_BREACHED.\n");
+        } else if (newWarnLevel == 1) {
+          tbuf.push("[***] COGNITION RUNTIME ERROR: 0x8004210F [***]", C_RED);
+          tbuf.push("CRITICAL: SYNAPTIC LINK DESYNC DETECTED.",          C_RED);
+        } else if (newWarnLevel == 2) {
+          tbuf.push("[!] WARNING: BIOMETRIC FEED UNSTABLE. SEEK RECONSTRUCTION.", C_ORANGE);
+        }
+      }
+
+      if (appState != AppState::Dead && gameState.player.isDead()) {
+        appState = AppState::Dead;
+        for (int i = 0; i < 5; ++i) tbuf.push("");
+        tbuf.push("                                [ CONNECTION LOST ]", C_RED);
+        tbuf.push("                                  SIGNAL NULL",       C_AMBER_DIM);
+        for (int i = 0; i < 5; ++i) tbuf.push("");
+      }
+    }
+
+    // ── Draw ──────────────────────────────────────────────────
+    BeginDrawing();
+      ClearBackground(C_BG);
+
+      if (appState == AppState::Boot) {
+        drawBoot(boot, font, W, H);
+      } else if (appState == AppState::MainMenu) {
+        drawMainMenu(font, W, H, inputSt);
+      } else {
+        drawTopBar(font, W, appState);
+        drawTerminal(tbuf, anim, font, W, H);
+        drawInputLine(inputSt, font, W, H);
+        drawSidebar(font, W, H, flash);
+        drawHUD(gameState.player, font, W, H);
+        drawVignette(W, H);
+      }
+
+      drawScanlines(W, H);
+    EndDrawing();
+  }
+
+  UnloadFont(font);
+  CloseWindow();
+  return 0;
 }
