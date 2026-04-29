@@ -22,7 +22,8 @@
       "Bash(cmake --build build)",
       "Bash(cmake --preset Mac-Debug)",
       "Bash(python3 -c ' *)",
-      "Bash(git -C /Users/alex/Desktop/dev/protocol status --short)"
+      "Bash(git -C /Users/alex/Desktop/dev/protocol status --short)",
+      "Bash(cmake -B build -S .)"
     ]
   }
 }

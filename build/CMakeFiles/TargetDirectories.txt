@@ -1,0 +1,3 @@
+/Users/alex/Desktop/dev/protocol/build/CMakeFiles/protocol.dir
+/Users/alex/Desktop/dev/protocol/build/CMakeFiles/edit_cache.dir
+/Users/alex/Desktop/dev/protocol/build/CMakeFiles/rebuild_cache.dir

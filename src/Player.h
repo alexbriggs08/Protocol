@@ -55,17 +55,17 @@ public:
 
   BodyPart stringToBodyPart(std::string str) {
     std::transform(str.begin(), str.end(), str.begin(), ::toupper);
-    if (str == "HEAD")
+    if (str == "HEAD" || str == "H")
       return BodyPart::Head;
-    if (str == "TORSO")
+    if (str == "TORSO" || str == "T")
       return BodyPart::Torso;
-    if (str == "LEFT ARM")
+    if (str == "LEFT ARM" || str == "L.ARM" || str == "LARM" || str == "LA")
       return BodyPart::LeftArm;
-    if (str == "RIGHT ARM")
+    if (str == "RIGHT ARM" || str == "R.ARM" || str == "RARM" || str == "RA")
       return BodyPart::RightArm;
-    if (str == "LEFT LEG")
+    if (str == "LEFT LEG" || str == "L.LEG" || str == "LLEG" || str == "LL")
       return BodyPart::LeftLeg;
-    if (str == "RIGHT LEG")
+    if (str == "RIGHT LEG" || str == "R.LEG" || str == "RLEG" || str == "RL")
       return BodyPart::RightLeg;
     return BodyPart::None;
   }

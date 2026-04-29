@@ -1,0 +1,1 @@
+/usr/bin/c++  -arch arm64 -Wl,-search_paths_first -Wl,-headerpad_max_install_names CMakeFiles/protocol.dir/src/main.cpp.o -o protocol  /opt/homebrew/Cellar/raylib/5.5/lib/libraylib.dylib -framework Cocoa -framework IOKit -framework OpenGL -L/opt/homebrew/Cellar/raylib/5.5/lib -lraylib
